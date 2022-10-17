@@ -10,7 +10,7 @@ CHAIN_ID=$(cat "$GENESIS_FILE_PATH" | jq -r .config.chainId)
 BLOCK_SIGNER_PRIVATE_KEY="3e4bde571b86929bf08e2aaad9a6a1882664cd5e65b96fff7d03e1c4e6dfa15c"
 BLOCK_SIGNER_ADDRESS="0xca062b0fd91172d89bcd4bb084ac4e21972cc467"
 RPC_PORT="${RPC_PORT:-8545}"
-WS_PORT="${WS_PORT:-8546}"
+WS_PORT="${WS_PORT:-8545}"
 
 if [ ! -d "$GETH_KEYSTORE_DIR" ]; then
 	echo "$GETH_KEYSTORE_DIR missing, running account import"
