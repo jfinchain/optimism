@@ -67,7 +67,7 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v3.1.1
         with:
-          context: ./ops-bedrock
+          context: ./
           push: true
           file: ./ops-bedrock/Dockerfile.stateviz
           tags: ${{ steps.docker_tagging.outputs.docker_tags }}
