@@ -10,6 +10,8 @@ const (
 	DevOptimismMintableERC20Factory = "0x6900000000000000000000000000000000000004"
 	DevAddressManager               = "0x6900000000000000000000000000000000000005"
 	DevProxyAdmin                   = "0x6900000000000000000000000000000000000006"
+	DevWETH9                        = "0x6900000000000000000000000000000000000007"
+	DevL1ERC721Bridge               = "0x6900000000000000000000000000000000000008"
 )
 
 var (
@@ -20,6 +22,8 @@ var (
 	DevOptimismMintableERC20FactoryAddr = common.HexToAddress(DevOptimismMintableERC20Factory)
 	DevAddressManagerAddr               = common.HexToAddress(DevAddressManager)
 	DevProxyAdminAddr                   = common.HexToAddress(DevProxyAdmin)
+	DevWETH9Addr                        = common.HexToAddress(DevWETH9)
+	DevL1ERC721BridgeAddr               = common.HexToAddress(DevL1ERC721Bridge)
 
 	DevPredeploys = make(map[string]*common.Address)
 )
@@ -32,4 +36,6 @@ func init() {
 	DevPredeploys["OptimismMintableERC20Factory"] = &DevOptimismMintableERC20FactoryAddr
 	DevPredeploys["AddressManager"] = &DevAddressManagerAddr
 	DevPredeploys["Admin"] = &DevProxyAdminAddr
+	DevPredeploys["WETH9"] = &DevWETH9Addr
+	DevPredeploys["L1ERC721Bridge"] = &DevL1ERC721BridgeAddr
 }
