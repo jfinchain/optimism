@@ -15,6 +15,8 @@ RUN make op-proposer
 
 FROM alpine:3.15
 
+RUN apk add jq
+
 COPY --from=builder /app/op-proposer/bin/op-proposer /usr/local/bin
 
 CMD ["op-proposer"]

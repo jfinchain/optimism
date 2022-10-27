@@ -14,6 +14,8 @@ RUN make op-node
 
 FROM alpine:3.15
 
+RUN apk add jq
+
 COPY --from=builder /app/op-node/bin/op-node /usr/local/bin
 
 CMD ["op-node"]
