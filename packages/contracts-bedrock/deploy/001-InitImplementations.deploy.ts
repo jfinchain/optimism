@@ -43,6 +43,11 @@ const deployFn: DeployFunction = async (hre) => {
   const bridgeProxy = await get('L1StandardBridgeProxy')
   const erc721BridgeProxy = await get('L1ERC721BridgeProxy')
 
+  let finalizationPeriodSeconds = 2;
+  if (deployConfig.finalizationPeriodSeconds && deployConfig.finalizationPeriodSeconds > 0) {
+    finalizationPeriodSeconds = deployConfig.finalizationPeriodSeconds
+  }
+
   let nonce = await l1.getTransactionCount(deployer)
   const implTxs = [
     deploy('L2OutputOracle', {
@@ -63,7 +68,7 @@ const deployFn: DeployFunction = async (hre) => {
     }),
     deploy('OptimismPortal', {
       from: deployer,
-      args: [oracleProxy.address, 2],
+      args: [oracleProxy.address, finalizationPeriodSeconds],
       log: true,
       waitConfirmations: deployConfig.deploymentWaitConfirmations,
       nonce: ++nonce,
