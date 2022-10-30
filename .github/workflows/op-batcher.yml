@@ -6,7 +6,6 @@ on:
   workflow_call:
 
 env:
-  REGISTRY: us-docker.pkg.dev/optimum-sound-359720
   IMAGE_NAME: gcr.io/op-batcher
 
 jobs:
@@ -30,11 +29,24 @@ jobs:
         with:
           install: true
 
+    - name: set-env
+        if: ${{ github.ref == 'refs/heads/production' }}
+        run: |
+          echo "REGISTRY=us-docker.pkg.dev/optimum-sound-359720" >> $GITHUB_ENV
+      - name: set-env
+        if: ${{ github.ref == 'refs/heads/main' }}
+        run: |
+          echo "REGISTRY=us-docker.pkg.dev/exfac-staging" >> $GITHUB_ENV
+      - name: set-env
+        if: ${{ github.ref == 'refs/heads/dev' }}
+        run: |
+            echo "REGISTRY=us-docker.pkg.dev/exfac-dev" >> $GITHUB_ENV
+
       - id: 'auth'
         name: 'Authenticate to Google Cloud'
         uses: 'google-github-actions/auth@v0'
         with:
-          credentials_json: ${{ secrets.DEPLOYER_SERVICE_ACCOUNT_KEY }}
+          credentials_json: ${{ github.ref == 'refs/heads/production' && secrets.DEPLOYER_SERVICE_ACCOUNT_KEY || github.ref == 'refs/heads/main' &&  secrets.STAGING_DEPLOYER_SERVICE_ACCOUNT_KEY || github.ref == 'refs/heads/dev' && secrets.DEV_DEPLOYER_SERVICE_ACCOUNT_KEY }}
 
       - name: Authenticate docker
         run: |
