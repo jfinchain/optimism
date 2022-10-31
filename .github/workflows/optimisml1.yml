@@ -1,6 +1,11 @@
 name: l1 image
 
 on:
+  push:
+    branches:
+      - "production"
+      - "main"
+      - "dev"
   # Trigger without any parameters a proactive rebuild
   workflow_dispatch: {}
   workflow_call:
