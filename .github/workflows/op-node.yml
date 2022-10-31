@@ -6,7 +6,6 @@ on:
   workflow_call:
 
 env:
-  REGISTRY: us-docker.pkg.dev/optimum-sound-359720
   IMAGE_NAME: gcr.io/op-node
 
 jobs:
