@@ -22,8 +22,6 @@ RUN apk update && \
 
 EXPOSE 8080
 
-VOLUME /etc/proxyd
-
 COPY --from=builder /app/bin/proxyd /bin/proxyd
 
 ENTRYPOINT ["/bin/entrypoint.sh"]
