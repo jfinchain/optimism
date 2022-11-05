@@ -41,8 +41,15 @@ const config: HardhatUserConfig = {
       accounts: [process.env.PRIVATE_KEY_DEPLOYER || ethers.constants.HashZero],
     },
     goerli: {
-      chainId: 5,
-      url: process.env.L1_RPC || '',
+      chainId: 7,
+      gasPrice: 2000000000,
+      url: 'http://65.109.53.138:8545',
+      accounts: [process.env.PRIVATE_KEY_DEPLOYER || ethers.constants.HashZero],
+    },
+    tch: {
+      chainId: 703,
+      gasPrice: 20000000000,
+      url: 'https://rpc.tch.dev',
       accounts: [process.env.PRIVATE_KEY_DEPLOYER || ethers.constants.HashZero],
     },
     'alpha-1': {

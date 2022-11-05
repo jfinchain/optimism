@@ -79,14 +79,6 @@ if [ ! -f "$DEVNET/done" ]; then
   )
 fi
 
-# Bring up L1.
-(
-  cd ops-bedrock
-  echo "Bringing up L1..."
-  DOCKER_BUILDKIT=1 docker-compose build --progress plain
-  docker-compose up -d l1
-  wait_up $L1_URL
-)
 
 # Bring up L2.
 (
@@ -107,7 +99,7 @@ SEQUENCER_BATCH_INBOX_ADDRESS="$(cat $DEVNET/rollup.json | jq -r '.batch_inbox_a
   L2OO_ADDRESS="$L2OO_ADDRESS" \
       SEQUENCER_GENESIS_HASH="$SEQUENCER_GENESIS_HASH" \
       SEQUENCER_BATCH_INBOX_ADDRESS="$SEQUENCER_BATCH_INBOX_ADDRESS" \
-      docker-compose up -d op-proposer op-batcher
+      docker-compose up -d op-node op-proposer op-batcher
 
   echo "Bringing up stateviz webserver..."
   docker-compose up -d stateviz
