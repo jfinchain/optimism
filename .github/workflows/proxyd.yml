@@ -1,4 +1,4 @@
-name: l2 image
+name: proxyd image
 
 on:
   push:
