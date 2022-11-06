@@ -248,6 +248,7 @@ func Start(config *Config) (func(), error) {
 		config.Server.MaxRequestBodyLogLen,
 		config.BatchConfig.MaxSize,
 		redisClient,
+		config.Server.DisableFrontendRateLimiter,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error creating server: %w", err)

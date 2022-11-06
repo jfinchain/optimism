@@ -21,8 +21,9 @@ type ServerConfig struct {
 
 	MaxUpstreamBatchSize int `toml:"max_upstream_batch_size"`
 
-	EnableRequestLog     bool `toml:"enable_request_log"`
-	MaxRequestBodyLogLen int  `toml:"max_request_body_log_len"`
+	EnableRequestLog           bool `toml:"enable_request_log"`
+	MaxRequestBodyLogLen       int  `toml:"max_request_body_log_len"`
+	DisableFrontendRateLimiter bool `toml:"disable_frontend_rate_limiter"`
 }
 
 type CacheConfig struct {

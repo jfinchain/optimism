@@ -36,26 +36,27 @@ const (
 var emptyArrayResponse = json.RawMessage("[]")
 
 type Server struct {
-	backendGroups        map[string]*BackendGroup
-	wsBackendGroup       *BackendGroup
-	wsMethodWhitelist    *StringSet
-	rpcMethodMappings    map[string]string
-	maxBodySize          int64
-	enableRequestLog     bool
-	maxRequestBodyLogLen int
-	authenticatedPaths   map[string]string
-	timeout              time.Duration
-	maxUpstreamBatchSize int
-	maxBatchSize         int
-	upgrader             *websocket.Upgrader
-	mainLim              FrontendRateLimiter
-	overrideLims         map[string]FrontendRateLimiter
-	limExemptOrigins     []*regexp.Regexp
-	limExemptUserAgents  []*regexp.Regexp
-	rpcServer            *http.Server
-	wsServer             *http.Server
-	cache                RPCCache
-	srvMu                sync.Mutex
+	backendGroups              map[string]*BackendGroup
+	wsBackendGroup             *BackendGroup
+	wsMethodWhitelist          *StringSet
+	rpcMethodMappings          map[string]string
+	maxBodySize                int64
+	enableRequestLog           bool
+	maxRequestBodyLogLen       int
+	authenticatedPaths         map[string]string
+	timeout                    time.Duration
+	maxUpstreamBatchSize       int
+	maxBatchSize               int
+	upgrader                   *websocket.Upgrader
+	disableFrontendRateLimiter bool
+	mainLim                    FrontendRateLimiter
+	overrideLims               map[string]FrontendRateLimiter
+	limExemptOrigins           []*regexp.Regexp
+	limExemptUserAgents        []*regexp.Regexp
+	rpcServer                  *http.Server
+	wsServer                   *http.Server
+	cache                      RPCCache
+	srvMu                      sync.Mutex
 }
 
 type limiterFunc func(method string) bool
@@ -75,6 +76,7 @@ func NewServer(
 	maxRequestBodyLogLen int,
 	maxBatchSize int,
 	redisClient *redis.Client,
+	disableFrontendRateLimiter bool,
 ) (*Server, error) {
 	if cache == nil {
 		cache = &NoopRPCCache{}
@@ -152,10 +154,11 @@ func NewServer(
 		upgrader: &websocket.Upgrader{
 			HandshakeTimeout: 5 * time.Second,
 		},
-		mainLim:             mainLim,
-		overrideLims:        overrideLims,
-		limExemptOrigins:    limExemptOrigins,
-		limExemptUserAgents: limExemptUserAgents,
+		mainLim:                    mainLim,
+		overrideLims:               overrideLims,
+		limExemptOrigins:           limExemptOrigins,
+		limExemptUserAgents:        limExemptUserAgents,
+		disableFrontendRateLimiter: disableFrontendRateLimiter,
 	}, nil
 }
 
@@ -227,7 +230,7 @@ func (s *Server) HandleRPC(w http.ResponseWriter, r *http.Request) {
 	isUnlimitedOrigin := s.isUnlimitedOrigin(origin)
 	isUnlimitedUserAgent := s.isUnlimitedUserAgent(userAgent)
 
-	if xff == "" {
+	if xff == "" && !s.disableFrontendRateLimiter {
 		writeRPCError(ctx, w, nil, ErrInvalidRequest("request does not include a remote IP"))
 		return
 	}
@@ -256,7 +259,7 @@ func (s *Server) HandleRPC(w http.ResponseWriter, r *http.Request) {
 		return !ok
 	}
 
-	if isLimited("") {
+	if !s.disableFrontendRateLimiter && isLimited("") {
 		RecordRPCError(ctx, BackendProxyd, "unknown", ErrOverRateLimit)
 		log.Warn(
 			"rate limited request",
