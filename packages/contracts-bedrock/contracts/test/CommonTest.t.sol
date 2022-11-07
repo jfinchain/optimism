@@ -230,7 +230,7 @@ contract Messenger_Initializer is L2OutputOracle_Initializer {
             "OVM_L1CrossDomainMessenger"
         );
         L1Messenger = L1CrossDomainMessenger(address(proxy));
-        L1Messenger.initialize();
+        L1Messenger.initialize(alice);
 
         vm.etch(
             Predeploys.L2_CROSS_DOMAIN_MESSENGER,
@@ -429,10 +429,7 @@ contract ERC721Bridge_Initializer is Messenger_Initializer {
     function setUp() public virtual override {
         super.setUp();
 
-        L1Bridge = new L1ERC721Bridge(
-            address(L1Messenger),
-            Predeploys.L2_ERC721_BRIDGE
-        );
+        L1Bridge = new L1ERC721Bridge(address(L1Messenger), Predeploys.L2_ERC721_BRIDGE);
 
         L2ERC721Bridge l2b = new L2ERC721Bridge(
             Predeploys.L2_CROSS_DOMAIN_MESSENGER,

@@ -61,7 +61,7 @@ def main():
         addresses = read_json(addresses_json_path)
     else:
         log.info('Deploying contracts.')
-        run_command(['yarn', 'hardhat', '--network', 'devnetL1', 'deploy'], env={
+        run_command(['yarn', 'hardhat', '--network', 'devnetL1', 'deploy', '--tags', 'fresh'], env={
             'CHAIN_ID': '900',
             'L1_RPC': 'http://localhost:8545',
             'PRIVATE_KEY_DEPLOYER': 'ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'
@@ -75,11 +75,11 @@ def main():
             addresses[c.replace('.json', '')] = data['address']
         sdk_addresses = {}
         sdk_addresses.update({
+            'AddressManager': '0x0000000000000000000000000000000000000000',
             'StateCommitmentChain': '0x0000000000000000000000000000000000000000',
             'CanonicalTransactionChain': '0x0000000000000000000000000000000000000000',
             'BondManager': '0x0000000000000000000000000000000000000000',
         })
-        sdk_addresses['AddressManager'] = addresses['AddressManager']
         sdk_addresses['L1CrossDomainMessenger'] = addresses['L1CrossDomainMessengerProxy']
         sdk_addresses['L1StandardBridge'] = addresses['L1StandardBridgeProxy']
         sdk_addresses['OptimismPortal'] = addresses['OptimismPortalProxy']

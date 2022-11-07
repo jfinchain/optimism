@@ -1,6 +1,5 @@
 import { ethers } from 'ethers'
-import { HardhatUserConfig, task, subtask } from 'hardhat/config'
-import { TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS } from 'hardhat/builtin-tasks/task-names'
+import { HardhatUserConfig } from 'hardhat/config'
 
 // Hardhat plugins
 import '@eth-optimism/hardhat-deploy-config'
@@ -11,25 +10,10 @@ import 'hardhat-deploy'
 // Hardhat tasks
 import './tasks'
 
-subtask(TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS).setAction(
-  async (_, __, runSuper) => {
-    const paths = await runSuper()
-
-    return paths.filter((p: string) => !p.endsWith('.t.sol'))
-  }
-)
-
-task('accounts', 'Prints the list of accounts', async (_, hre) => {
-  const accounts = await hre.ethers.getSigners()
-
-  for (const account of accounts) {
-    console.log(account.address)
-  }
-})
-
 const config: HardhatUserConfig = {
   networks: {
     devnetL1: {
+      live: false,
       url: 'http://localhost:8545',
       accounts: [
         'ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
@@ -55,6 +39,12 @@ const config: HardhatUserConfig = {
       url: process.env.L1_RPC || '',
       accounts: [process.env.PRIVATE_KEY_DEPLOYER || ethers.constants.HashZero],
     },
+    'mainnet-forked': {
+      chainId: 1,
+      url: process.env.L1_RPC || '',
+      accounts: [process.env.PRIVATE_KEY_DEPLOYER || ethers.constants.HashZero],
+      live: false,
+    },
   },
   foundry: {
     buildInfo: true,
@@ -70,6 +60,18 @@ const config: HardhatUserConfig = {
     },
   },
   deployConfigSpec: {
+    // Address of the L1 proxy admin owner.
+    finalSystemOwner: {
+      type: 'address',
+      default: ethers.constants.AddressZero,
+    },
+
+    // Address of the system controller.
+    controller: {
+      type: 'address',
+      default: ethers.constants.AddressZero,
+    },
+
     // To anchor the rollup at for L1 genesis.
     // The L2 genesis script uses this to fill the storage of the L1Block info predeploy.
     // The rollup config script uses this to fill the L1 genesis info for the rollup.
@@ -85,6 +87,7 @@ const config: HardhatUserConfig = {
     l1ChainID: {
       type: 'number',
     },
+
     // Required to identify the L2 network and create p2p signatures unique for this chain.
     // Part of L2 genesis config.
     // "l2_chain_id" in rollup config.
@@ -128,11 +131,6 @@ const config: HardhatUserConfig = {
     // Address of the key the sequencer uses to sign blocks on the P2P layer
     // "p2p_sequencer_address" in rollup config.
     p2pSequencerAddress: {
-      type: 'address',
-    },
-    // L2 address used to send all priority fees to, also known as the coinbase address in the block.
-    // "fee_recipient_address" in rollup config.
-    optimismL2FeeRecipient: {
       type: 'address',
     },
     // L1 address that batches are sent to.
@@ -196,6 +194,16 @@ const config: HardhatUserConfig = {
     },
     // address - The address of the owner.
     l2OutputOracleOwner: {
+      type: 'address',
+    },
+
+    // uint256 - Finalization period in seconds.
+    finalizationPeriodSeconds: {
+      type: 'number',
+      default: 2,
+    },
+
+    systemConfigOwner: {
       type: 'address',
     },
 
@@ -309,10 +317,6 @@ const config: HardhatUserConfig = {
       type: 'address',
       default: ethers.constants.AddressZero,
     },
-    proxyAdminOwner: {
-      type: 'address',
-      default: ethers.constants.AddressZero,
-    },
     gasPriceOracleOwner: {
       type: 'address',
       default: ethers.constants.AddressZero,
@@ -329,7 +333,7 @@ const config: HardhatUserConfig = {
       type: 'number',
       default: 6,
     },
-    deploymentWaitConfirmations: {
+    numDeployConfirmations: {
       type: 'number',
       default: 1,
     },
@@ -345,12 +349,14 @@ const config: HardhatUserConfig = {
     ],
     deployments: {
       goerli: ['../contracts/deployments/goerli'],
+      mainnet: ['../contracts/deployments/mainnet'],
+      'mainnet-forked': ['../contracts/deployments/mainnet'],
     },
   },
   solidity: {
     compilers: [
       {
-        version: '0.8.10',
+        version: '0.8.15',
         settings: {
           optimizer: { enabled: true, runs: 10_000 },
         },
