@@ -143,10 +143,7 @@ var Subcommands = cli.Commands{
 			if err != nil {
 				return err
 			}
-			sysCfgProxy, err := hh.GetDeployment("SystemConfigProxy")
-			if err != nil {
-				return err
-			}
+
 			l1ERC721BP, err := hh.GetDeployment("L1ERC721BridgeProxy")
 			if err != nil {
 				return err
@@ -163,7 +160,7 @@ var Subcommands = cli.Commands{
 				return fmt.Errorf("error creating l2 developer genesis: %w", err)
 			}
 
-			rollupConfig := makeRollupConfig(config, l1StartBlock, l2Genesis, portalProxy.Address, sysCfgProxy.Address)
+			rollupConfig := makeRollupConfig(config, l1StartBlock, l2Genesis, portalProxy.Address, common.Address{})
 
 			if err := writeGenesisFile(ctx.String("outfile.l2"), l2Genesis); err != nil {
 				return err
