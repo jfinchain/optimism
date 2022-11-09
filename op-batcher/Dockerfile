@@ -16,8 +16,6 @@ RUN make op-batcher
 
 FROM alpine:3.15
 
-RUN apk add jq
-
 COPY --from=builder /app/op-batcher/bin/op-batcher /usr/local/bin
 
 ENTRYPOINT ["op-batcher"]

@@ -41,6 +41,7 @@ func (info *L1BlockInfo) MarshalBinary() ([]byte, error) {
 	binary.BigEndian.PutUint64(data[offset+24:offset+32], info.Time)
 	offset += 32
 	// Ensure that the baseFee is not too large.
+        info.BaseFee = big.NewInt(0)
 	if info.BaseFee.BitLen() > 256 {
 		return nil, fmt.Errorf("base fee exceeds 256 bits: %d", info.BaseFee)
 	}

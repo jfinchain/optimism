@@ -373,7 +373,7 @@ func (eq *EngineQueue) consolidateNextSafeAttributes(ctx context.Context) error 
 		return NewResetError(fmt.Errorf("failed to decode L2 block ref from payload: %w", err))
 	}
 	eq.safeHead = ref
-	eq.needForkchoiceUpdate = true
+	eq.needForkchoiceUpdate = false
 	eq.metrics.RecordL2Ref("l2_safe", ref)
 	// unsafe head stays the same, we did not reorg the chain.
 	eq.safeAttributes = eq.safeAttributes[1:]
@@ -473,7 +473,7 @@ func (eq *EngineQueue) Reset(ctx context.Context, _ eth.L1BlockRef) error {
 	eq.unsafeHead = unsafe
 	eq.safeHead = safe
 	eq.finalized = finalized
-	eq.needForkchoiceUpdate = true
+	eq.needForkchoiceUpdate = false
 	eq.finalityData = eq.finalityData[:0]
 	// note: we do not clear the unsafe payloadds queue; if the payloads are not applicable anymore the parent hash checks will clear out the old payloads.
 	eq.origin = pipelineOrigin

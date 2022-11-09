@@ -143,9 +143,7 @@ func NewL2StorageConfig(config *DeployConfig, block *types.Block, l2Addrs *L2Add
 	if block.Number() == nil {
 		return storage, errors.New("block number not set")
 	}
-	if block.BaseFee() == nil {
-		return storage, errors.New("block base fee not set")
-	}
+
 	if l2Addrs == nil {
 		return storage, errors.New("must pass L1 address info")
 	}
@@ -175,7 +173,7 @@ func NewL2StorageConfig(config *DeployConfig, block *types.Block, l2Addrs *L2Add
 	storage["L1Block"] = state.StorageValues{
 		"number":         block.Number(),
 		"timestamp":      block.Time(),
-		"basefee":        block.BaseFee(),
+		"basefee":        1000000000,
 		"hash":           block.Hash(),
 		"sequenceNumber": 0,
 	}

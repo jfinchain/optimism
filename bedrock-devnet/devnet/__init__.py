@@ -26,7 +26,7 @@ def main():
     devnet_dir = pjoin(monorepo_dir, '.devnet')
     ops_bedrock_dir = pjoin(monorepo_dir, 'ops-bedrock')
     contracts_bedrock_dir = pjoin(monorepo_dir, 'packages', 'contracts-bedrock')
-    deployment_dir = pjoin(contracts_bedrock_dir, 'deployments', 'devnetL1')
+    deployment_dir = pjoin(contracts_bedrock_dir, 'deployments', 'tch')
     op_node_dir = pjoin(args.monorepo_dir, 'op-node')
     genesis_l1_path = pjoin(devnet_dir, 'genesis-l1.json')
     genesis_l2_path = pjoin(devnet_dir, 'genesis-l2.json')
@@ -35,25 +35,14 @@ def main():
     rollup_config_path = pjoin(devnet_dir, 'rollup.json')
     os.makedirs(devnet_dir, exist_ok=True)
 
-    if os.path.exists(genesis_l1_path):
-        log.info('L2 genesis already generated.')
-    else:
-        log.info('Generating L1 genesis.')
-        write_json(genesis_l1_path, GENESIS_TMPL)
-
-    log.info('Starting L1.')
-    run_command(['docker-compose', 'up', '-d', 'l1'], cwd=ops_bedrock_dir, env={
-        'PWD': ops_bedrock_dir
-    })
-    wait_up(8545)
 
     log.info('Generating network config.')
-    devnet_cfg_orig = pjoin(contracts_bedrock_dir, 'deploy-config', 'devnetL1.json')
-    devnet_cfg_backup = pjoin(devnet_dir, 'devnetL1.json.bak')
+    devnet_cfg_orig = pjoin(contracts_bedrock_dir, 'deploy-config', 'tch.json')
+    devnet_cfg_backup = pjoin(devnet_dir, 'tch.json.bak')
     shutil.copy(devnet_cfg_orig, devnet_cfg_backup)
     deploy_config = read_json(devnet_cfg_orig)
     deploy_config['l1GenesisBlockTimestamp'] = GENESIS_TMPL['timestamp']
-    deploy_config['l1StartingBlockTag'] = 'earliest'
+    deploy_config['l1StartingBlockTag'] = '0xaead086fdf2447279d40de5e55fbfe0405c25da3556526a16a1884f6ec0bf22f'
     write_json(devnet_cfg_orig, deploy_config)
 
     if os.path.exists(addresses_json_path):
@@ -61,9 +50,9 @@ def main():
         addresses = read_json(addresses_json_path)
     else:
         log.info('Deploying contracts.')
-        run_command(['yarn', 'hardhat', '--network', 'devnetL1', 'deploy'], env={
-            'CHAIN_ID': '900',
-            'L1_RPC': 'http://localhost:8545',
+        run_command(['yarn', 'hardhat', '--network', 'tch', 'deploy', '--reset'], env={
+            'CHAIN_ID': '703',
+            'L1_RPC': 'https://rpc.tch.dev',
             'PRIVATE_KEY_DEPLOYER': 'ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'
         }, cwd=contracts_bedrock_dir)
         contracts = os.listdir(deployment_dir)
@@ -93,7 +82,7 @@ def main():
         log.info('Generating L2 genesis and rollup configs.')
         run_command([
             'go', 'run', 'cmd/main.go', 'genesis', 'l2',
-            '--l1-rpc', 'http://localhost:8545',
+            '--l1-rpc', 'https://rpc.tch.dev',
             '--deploy-config', devnet_cfg_orig,
             '--deployment-dir', deployment_dir,
             '--outfile.l2', pjoin(devnet_dir, 'genesis-l2.json'),
