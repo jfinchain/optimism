@@ -6,6 +6,7 @@ import '@eth-optimism/hardhat-deploy-config'
 import '@foundry-rs/hardhat-forge'
 import '@nomiclabs/hardhat-ethers'
 import 'hardhat-deploy'
+import "@nomiclabs/hardhat-etherscan"
 
 // Hardhat tasks
 import './tasks'
