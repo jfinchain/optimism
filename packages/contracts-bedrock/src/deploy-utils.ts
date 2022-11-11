@@ -39,6 +39,7 @@ export const deployAndVerifyAndThen = async ({
       // Verification sometimes fails, even when the contract is correctly deployed and eventually
       // verified. Possibly due to a race condition. We don't want to halt the whole deployment
       // process just because that happens.
+      /*
       try {
         console.log('Verifying on Etherscan...')
         await hre.run('verify:verify', {
@@ -60,6 +61,7 @@ export const deployAndVerifyAndThen = async ({
         console.log(error)
       }
     }
+    */
     if (postDeployAction) {
       const signer = hre.ethers.provider.getSigner(deployer)
       let abi = result.abi
