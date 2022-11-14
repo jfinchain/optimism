@@ -60,8 +60,8 @@ export const deployAndVerifyAndThen = async ({
         console.log('Error when verifying bytecode on Sourcify:')
         console.log(error)
       }
+      */
     }
-    */
     if (postDeployAction) {
       const signer = hre.ethers.provider.getSigner(deployer)
       let abi = result.abi
