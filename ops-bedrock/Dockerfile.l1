@@ -2,8 +2,8 @@ FROM ethereum/client-go:v1.10.22
 
 RUN apk add --no-cache jq
 
-COPY entrypoint.sh /entrypoint.sh
+COPY entrypointl1.sh /entrypointl1.sh
 
 VOLUME ["/db"]
 
-ENTRYPOINT ["/bin/sh", "/entrypoint.sh"]
+ENTRYPOINT ["/bin/sh", "/entrypointl1.sh"]
