@@ -97,11 +97,6 @@ func (t *TransactionManager) calcGasTipAndFeeCap(ctx context.Context) (gasTipCap
 // It queries L1 for the current fee market conditions as well as for the nonce.
 // NOTE: This method SHOULD NOT publish the resulting transaction.
 func (t *TransactionManager) CraftTx(ctx context.Context, data []byte) (*types.Transaction, error) {
-	gasTipCap, gasFeeCap, err := t.calcGasTipAndFeeCap(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	ctx, cancel := context.WithTimeout(ctx, networkTimeout)
 	nonce, err := t.l1Client.NonceAt(ctx, t.senderAddress, nil)
 	cancel()
@@ -109,13 +104,17 @@ func (t *TransactionManager) CraftTx(ctx context.Context, data []byte) (*types.T
 		return nil, fmt.Errorf("failed to get nonce: %w", err)
 	}
 
-	rawTx := &types.DynamicFeeTx{
-		ChainID:   t.chainID,
-		Nonce:     nonce,
-		To:        &t.batchInboxAddress,
-		GasTipCap: gasTipCap,
-		GasFeeCap: gasFeeCap,
-		Data:      data,
+	gasPrice, err := t.l1Client.SuggestGasPrice(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	gasLimit := uint64(2100000)
+	rawTx := &types.LegacyTx{
+		Nonce:    nonce,
+		To:       &t.batchInboxAddress,
+		GasPrice: gasPrice,
+		Gas:      gasLimit,
+		Data:     data,
 	}
 	t.log.Info("creating tx", "to", rawTx.To, "from", t.senderAddress)
 
@@ -133,22 +132,20 @@ func (t *TransactionManager) CraftTx(ctx context.Context, data []byte) (*types.T
 //
 // NOTE: This method SHOULD NOT publish the resulting transaction.
 func (t *TransactionManager) UpdateGasPrice(ctx context.Context, tx *types.Transaction) (*types.Transaction, error) {
-	gasTipCap, gasFeeCap, err := t.calcGasTipAndFeeCap(ctx)
+	gasPrice, err := t.l1Client.SuggestGasPrice(context.Background())
 	if err != nil {
 		return nil, err
 	}
-
-	rawTx := &types.DynamicFeeTx{
-		ChainID:   t.chainID,
-		Nonce:     tx.Nonce(),
-		To:        tx.To(),
-		GasTipCap: gasTipCap,
-		GasFeeCap: gasFeeCap,
-		Gas:       tx.Gas(),
-		Data:      tx.Data(),
+	gasLimit := uint64(2100000)
+	rawTx := &types.LegacyTx{
+		Nonce:    tx.Nonce(),
+		To:       tx.To(),
+		GasPrice: gasPrice,
+		Gas:      gasLimit,
+		Data:     tx.Data(),
 	}
 	// Only log the new tip/fee cap because the updateGasPrice closure reuses the same initial transaction
-	t.log.Trace("updating gas price", "tip_cap", gasTipCap, "fee_cap", gasFeeCap)
+	t.log.Trace("updating gas price", "gasPrice", gasPrice, "gasLimit", gasLimit)
 
 	return t.signerFn(rawTx)
 }

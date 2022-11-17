@@ -14,6 +14,14 @@ const config: HardhatUserConfig = {
   networks: {
     devnetL1: {
       live: false,
+      url: 'http://65.109.53.138:8545',
+      gasPrice: 2000000000,
+      accounts: [
+        'ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
+      ],
+    },
+    xdevnetL1: {
+      live: false,
       url: 'http://localhost:8545',
       accounts: [
         'ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
