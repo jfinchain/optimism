@@ -194,7 +194,8 @@ func (d *Driver) CraftTx(ctx context.Context, start, end, nonce *big.Int) (*type
 
 	// Note: the CurrentL1 is up to (and incl.) what the safe chain and finalized chain have been derived from,
 	// and should be a quite recent L1 block (depends on L1 conf distance applied to rollup node).
-
+	d.l.Info("--", " _l2BlockNumber:", output.BlockRef.Number, " _l1Blockhash:", output.Status.CurrentL1.Hash,
+		"_l1BlockNumber:", output.Status.CurrentL1.Number)
 	tx, err := d.l2ooContract.ProposeL2Output(
 		opts,
 		output.OutputRoot,
