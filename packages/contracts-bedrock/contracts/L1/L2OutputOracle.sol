@@ -217,10 +217,10 @@ contract L2OutputOracle is OwnableUpgradeable, Semver {
             // retrievable, if the proposer is experiencing this attack it can simply leave out the
             // blockhash value, and delay submission until it is confident that the L1 block is
             // finalized.
-            require(
-                blockhash(_l1BlockNumber) == _l1Blockhash,
-                "L2OutputOracle: blockhash does not match the hash at the expected height"
-            );
+            // require(
+            //     blockhash(_l1BlockNumber) == _l1Blockhash,
+            //    "L2OutputOracle: blockhash does not match the hash at the expected height"
+            // );
         }
 
         l2Outputs[_l2BlockNumber] = Types.OutputProposal(_outputRoot, block.timestamp);
