@@ -122,11 +122,11 @@ func (s *BasicUser[B]) signerFn(address common.Address, tx *types.Transaction) (
 
 // ActResetTxOpts prepares the tx options to default values, based on the current pending block header.
 func (s *BasicUser[B]) ActResetTxOpts(t Testing) {
-	pendingHeader, err := s.env.EthCl.HeaderByNumber(t.Ctx(), big.NewInt(-1))
-	require.NoError(t, err, "need l2 pending header for accurate basefee info")
+	latestHeader, err := s.env.EthCl.HeaderByNumber(t.Ctx(), nil)
+	require.NoError(t, err, "need l2 latest header for accurate basefee info")
 
 	gasTipCap := big.NewInt(2 * params.GWei)
-	gasFeeCap := new(big.Int).Add(gasTipCap, new(big.Int).Mul(pendingHeader.BaseFee, big.NewInt(2)))
+	gasFeeCap := new(big.Int).Add(gasTipCap, new(big.Int).Mul(latestHeader.BaseFee, big.NewInt(2)))
 
 	s.txOpts = bind.TransactOpts{
 		From:      s.address,
@@ -379,14 +379,70 @@ func (s *CrossLayerUser) Address() common.Address {
 	return s.L1.address
 }
 
-// ActCompleteWithdrawal creates a L1 withdrawal completion tx for latest withdrawal.
+// ActCompleteWithdrawal creates a L1 proveWithdrawal tx for latest withdrawal.
+// The tx hash is remembered as the last L1 tx, to check as L1 actor.
+func (s *CrossLayerUser) ActProveWithdrawal(t Testing) {
+	s.L1.lastTxHash = s.ProveWithdrawal(t, s.lastL2WithdrawalTxHash)
+}
+
+// ProveWithdrawal creates a L1 proveWithdrawal tx for the given L2 withdrawal tx, returning the tx hash.
+func (s *CrossLayerUser) ProveWithdrawal(t Testing, l2TxHash common.Hash) common.Hash {
+	// Figure out when our withdrawal was included
+	receipt := s.L2.CheckReceipt(t, true, l2TxHash)
+	l2WithdrawalBlock, err := s.L2.env.EthCl.BlockByNumber(t.Ctx(), receipt.BlockNumber)
+	require.NoError(t, err)
+
+	// Figure out what the Output oracle on L1 has seen so far
+	l2OutputBlockNr, err := s.L1.env.Bindings.L2OutputOracle.LatestBlockNumber(&bind.CallOpts{})
+	require.NoError(t, err)
+	l2OutputBlock, err := s.L2.env.EthCl.BlockByNumber(t.Ctx(), l2OutputBlockNr)
+	require.NoError(t, err)
+	l2OutputIndex, err := s.L1.env.Bindings.L2OutputOracle.GetL2OutputIndexAfter(&bind.CallOpts{}, l2OutputBlockNr)
+	require.NoError(t, err)
+
+	// Check if the L2 output is even old enough to include the withdrawal
+	if l2OutputBlock.NumberU64() < l2WithdrawalBlock.NumberU64() {
+		t.InvalidAction("the latest L2 output is %d and is not past L2 block %d that includes the withdrawal yet, no withdrawal can be proved yet", l2OutputBlock.NumberU64(), l2WithdrawalBlock.NumberU64())
+		return common.Hash{}
+	}
+
+	// We generate a proof for the latest L2 output, which shouldn't require archive-node data if it's recent enough.
+	header, err := s.L2.env.EthCl.HeaderByNumber(t.Ctx(), l2OutputBlockNr)
+	require.NoError(t, err)
+	params, err := withdrawals.ProveWithdrawalParameters(t.Ctx(), s.L2.env.Bindings.ProofClient, s.L2.env.EthCl, s.lastL2WithdrawalTxHash, header)
+	require.NoError(t, err)
+
+	// Create the prove tx
+	tx, err := s.L1.env.Bindings.OptimismPortal.ProveWithdrawalTransaction(
+		&s.L1.txOpts,
+		bindings.TypesWithdrawalTransaction{
+			Nonce:    params.Nonce,
+			Sender:   params.Sender,
+			Target:   params.Target,
+			Value:    params.Value,
+			GasLimit: params.GasLimit,
+			Data:     params.Data,
+		},
+		l2OutputIndex,
+		params.OutputRootProof,
+		params.WithdrawalProof,
+	)
+	require.NoError(t, err)
+
+	// Send the actual tx (since tx opts don't send by default)
+	err = s.L1.env.EthCl.SendTransaction(t.Ctx(), tx)
+	require.NoError(t, err, "must send prove tx")
+	return tx.Hash()
+}
+
+// ActCompleteWithdrawal creates a L1 withdrawal finalization tx for latest withdrawal.
 // The tx hash is remembered as the last L1 tx, to check as L1 actor.
 // The withdrawal functions like CompleteWithdrawal
 func (s *CrossLayerUser) ActCompleteWithdrawal(t Testing) {
 	s.L1.lastTxHash = s.CompleteWithdrawal(t, s.lastL2WithdrawalTxHash)
 }
 
-// CompleteWithdrawal creates a L1 withdrawal completion tx for the given L2 withdrawal tx, returning the tx hash.
+// CompleteWithdrawal creates a L1 withdrawal finalization tx for the given L2 withdrawal tx, returning the tx hash.
 // It's an invalid action to attempt to complete a withdrawal that has not passed the L1 finalization period yet
 func (s *CrossLayerUser) CompleteWithdrawal(t Testing, l2TxHash common.Hash) common.Hash {
 	finalizationPeriod, err := s.L1.env.Bindings.OptimismPortal.FINALIZATIONPERIODSECONDS(&bind.CallOpts{})
@@ -420,9 +476,11 @@ func (s *CrossLayerUser) CompleteWithdrawal(t Testing, l2TxHash common.Hash) com
 	}
 
 	// We generate a proof for the latest L2 output, which shouldn't require archive-node data if it's recent enough.
+	// Note that for the `FinalizeWithdrawalTransaction` function, this proof isn't needed. We simply use some of the
+	// params for the `WithdrawalTransaction` type generated in the bindings.
 	header, err := s.L2.env.EthCl.HeaderByNumber(t.Ctx(), l2OutputBlockNr)
 	require.NoError(t, err)
-	params, err := withdrawals.FinalizeWithdrawalParameters(t.Ctx(), s.L2.env.Bindings.ProofClient, s.L2.env.EthCl, s.lastL2WithdrawalTxHash, header)
+	params, err := withdrawals.ProveWithdrawalParameters(t.Ctx(), s.L2.env.Bindings.ProofClient, s.L2.env.EthCl, s.lastL2WithdrawalTxHash, header)
 	require.NoError(t, err)
 
 	// Create the withdrawal tx
@@ -436,14 +494,11 @@ func (s *CrossLayerUser) CompleteWithdrawal(t Testing, l2TxHash common.Hash) com
 			GasLimit: params.GasLimit,
 			Data:     params.Data,
 		},
-		params.BlockNumber,
-		params.OutputRootProof,
-		params.WithdrawalProof,
 	)
 	require.NoError(t, err)
 
 	// Send the actual tx (since tx opts don't send by default)
 	err = s.L1.env.EthCl.SendTransaction(t.Ctx(), tx)
-	require.NoError(t, err, "must send tx")
+	require.NoError(t, err, "must send finalize tx")
 	return tx.Hash()
 }

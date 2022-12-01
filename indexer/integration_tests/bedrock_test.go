@@ -79,8 +79,8 @@ func TestBedrockIndexer(t *testing.T) {
 		RESTPort:                       7980,
 		DisableIndexer:                 false,
 		Bedrock:                        true,
-		BedrockL1StandardBridgeAddress: predeploys.DevL1StandardBridgeAddr,
-		BedrockOptimismPortalAddress:   predeploys.DevOptimismPortalAddr,
+		BedrockL1StandardBridgeAddress: cfg.DeployConfig.L1StandardBridgeProxy,
+		BedrockOptimismPortalAddress:   cfg.DeployConfig.OptimismPortalProxy,
 	}
 	idxr, err := indexer.NewIndexer(idxrCfg)
 	require.NoError(t, err)
@@ -201,10 +201,46 @@ func TestBedrockIndexer(t *testing.T) {
 		require.NoError(t, err)
 		proofCl := gethclient.New(rpcClient)
 		receiptCl := ethclient.NewClient(rpcClient)
-		wParams, err := withdrawals.FinalizeWithdrawalParameters(context.Background(), proofCl, receiptCl, wdTx.Hash(), finHeader)
+		wParams, err := withdrawals.ProveWithdrawalParameters(context.Background(), proofCl, receiptCl, wdTx.Hash(), finHeader)
 		require.NoError(t, err)
 
+		oracle, err := bindings.NewL2OutputOracleCaller(predeploys.DevL2OutputOracleAddr, l1Client)
+		require.Nil(t, err)
+
+		l2OutputIndex, err := oracle.GetL2OutputIndexAfter(&bind.CallOpts{}, wParams.BlockNumber)
+		require.Nil(t, err)
+
 		l1Opts.Value = big.NewInt(0)
+		// Prove our withdrawal
+		proveTx, err := portal.ProveWithdrawalTransaction(
+			l1Opts,
+			bindings.TypesWithdrawalTransaction{
+				Nonce:    wParams.Nonce,
+				Sender:   wParams.Sender,
+				Target:   wParams.Target,
+				Value:    wParams.Value,
+				GasLimit: wParams.GasLimit,
+				Data:     wParams.Data,
+			},
+			l2OutputIndex,
+			wParams.OutputRootProof,
+			wParams.WithdrawalProof,
+		)
+		require.NoError(t, err)
+
+		_, err = e2eutils.WaitReceiptOK(e2eutils.TimeoutCtx(t, time.Minute), l1Client, proveTx.Hash())
+		require.NoError(t, err)
+
+		// Wait for the finalization period to elapse
+		_, err = withdrawals.WaitForFinalizationPeriod(
+			e2eutils.TimeoutCtx(t, time.Minute),
+			l1Client,
+			predeploys.DevOptimismPortalAddr,
+			wParams.BlockNumber,
+		)
+		require.NoError(t, err)
+
+		// Send our finalize withdrawal transaction
 		finTx, err := portal.FinalizeWithdrawalTransaction(
 			l1Opts,
 			bindings.TypesWithdrawalTransaction{
@@ -215,9 +251,6 @@ func TestBedrockIndexer(t *testing.T) {
 				GasLimit: wParams.GasLimit,
 				Data:     wParams.Data,
 			},
-			wParams.BlockNumber,
-			wParams.OutputRootProof,
-			wParams.WithdrawalProof,
 		)
 		require.NoError(t, err)
 

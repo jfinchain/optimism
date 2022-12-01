@@ -7,11 +7,11 @@ import { OptimismPortal } from "../L1/OptimismPortal.sol";
 import { L1CrossDomainMessenger } from "../L1/L1CrossDomainMessenger.sol";
 import { L1StandardBridge } from "../L1/L1StandardBridge.sol";
 import { L1ERC721Bridge } from "../L1/L1ERC721Bridge.sol";
+import { SystemConfig } from "../L1/SystemConfig.sol";
 import { OptimismMintableERC20Factory } from "../universal/OptimismMintableERC20Factory.sol";
 import { AddressManager } from "../legacy/AddressManager.sol";
 import { PortalSender } from "./PortalSender.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { SystemConfig } from "./DeployConfig.sol";
 
 /**
  * @title BaseSystemDictator
@@ -38,6 +38,7 @@ contract BaseSystemDictator is Ownable {
         address l1StandardBridgeProxy;
         address optimismMintableERC20FactoryProxy;
         address l1ERC721BridgeProxy;
+        address systemConfigProxy;
     }
 
     /**
@@ -51,36 +52,57 @@ contract BaseSystemDictator is Ownable {
         OptimismMintableERC20Factory optimismMintableERC20FactoryImpl;
         L1ERC721Bridge l1ERC721BridgeImpl;
         PortalSender portalSenderImpl;
+        SystemConfig systemConfigImpl;
     }
 
     /**
-     * @notice Set of implementation addresses.
+     * @notice Dynamic L2OutputOracle config.
      */
-    struct L2OutputOracleConfig {
-        bytes32 l2OutputOracleGenesisL2Output;
-        address l2OutputOracleProposer;
-        address l2OutputOracleOwner;
+    struct L2OutputOracleDynamicConfig {
+        uint256 l2OutputOracleStartingBlockNumber;
+        uint256 l2OutputOracleStartingTimestamp;
+    }
+
+    /**
+     * @notice Values for the system config contract.
+     */
+    struct SystemConfigConfig {
+        address owner;
+        uint256 overhead;
+        uint256 scalar;
+        bytes32 batcherHash;
+        uint64 gasLimit;
     }
 
     /**
      * @notice Combined system configuration.
      */
-    struct SystemConfig {
+    struct DeployConfig {
         GlobalConfig globalConfig;
         ProxyAddressConfig proxyAddressConfig;
         ImplementationAddressConfig implementationAddressConfig;
-        L2OutputOracleConfig l2OutputOracleConfig;
+        SystemConfigConfig systemConfigConfig;
     }
 
     /**
      * @notice System configuration.
      */
-    SystemConfig public config;
+    DeployConfig public config;
+
+    /**
+     * @notice Dynamic configuration for the L2OutputOracle.
+     */
+    L2OutputOracleDynamicConfig public l2OutputOracleDynamicConfig;
 
     /**
      * @notice Current step;
      */
     uint8 public currentStep = 1;
+
+    /**
+     * @notice Whether or not dynamic config has been set.
+     */
+    bool public dynamicConfigSet;
 
     /**
      * @notice Checks that the current step is the expected step, then bumps the current step.
@@ -96,8 +118,20 @@ contract BaseSystemDictator is Ownable {
     /**
      * @param _config System configuration.
      */
-    constructor(SystemConfig memory _config) Ownable() {
+    constructor(DeployConfig memory _config) Ownable() {
         config = _config;
         _transferOwnership(config.globalConfig.controller);
+    }
+
+    /**
+     * @notice Allows the owner to update dynamic L2OutputOracle config.
+     *
+     * @param _l2OutputOracleDynamicConfig Dynamic L2OutputOracle config.
+     */
+    function updateL2OutputOracleDynamicConfig(
+        L2OutputOracleDynamicConfig memory _l2OutputOracleDynamicConfig
+    ) external onlyOwner {
+        l2OutputOracleDynamicConfig = _l2OutputOracleDynamicConfig;
+        dynamicConfigSet = true;
     }
 }

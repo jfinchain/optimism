@@ -1,5 +1,29 @@
 # @eth-optimism/contracts-bedrock
 
+## 0.10.0
+
+### Minor Changes
+
+- 59adcaa09: Deleted Unused Variables fundAccount , impersonatedTx
+- 1bfe79f20: Adds an implementation of the Two Step Withdrawals V2 proposal
+
+### Patch Changes
+
+- c025a1153: Fixes a severe vulnerability found in ToB's November 2022 audit of the Bedrock contracts
+- f8697a607: Removes historicalTotalBlocks from the L2OutputOracle
+- c71500a7e: Updates L2OutputOracle to easily delete multiple outputs at once
+- f49b71d50: Updated forge-std version
+- ccaf5bc83: Allows owner and proposer addresses to be the same in L2OutputOracle
+
+## 0.9.1
+
+### Patch Changes
+
+- 52079cc12: Has ProxyAdmin use Ownable instead of Owned
+- 13bfafb21: Tweaks variable ordering in OptimismPortal
+- eeae96941: Removes the unused DeployConfig contract
+- 427831d86: Add comments to SystemConfig.sol
+
 ## 0.9.0
 
 ### Minor Changes
