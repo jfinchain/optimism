@@ -1,5 +1,5 @@
 /* Imports: External */
-import { fromHexString, sleep } from '@eth-optimism/core-utils'
+import { fromHexString, getChainId, sleep } from '@eth-optimism/core-utils'
 import { BaseService, Metrics } from '@eth-optimism/common-ts'
 import { TypedEvent } from '@eth-optimism/contracts/dist/types/common'
 import { BaseProvider, StaticJsonRpcProvider } from '@ethersproject/providers'
@@ -123,6 +123,14 @@ export class L1IngestionService extends BaseService<L1IngestionServiceOptions> {
       this.state.l1RpcProvider = this.options.l1RpcProvider
     }
 
+    // Make sure that the given provider is connected to L1 and not L2
+    const connectedChainId = await getChainId(this.state.l1RpcProvider)
+    if (connectedChainId === this.options.l2ChainId) {
+      throw new Error(
+        `Given L1 RPC provider is actually an L2 provider, please provide an L1 provider`
+      )
+    }
+
     this.logger.info('Using AddressManager', {
       addressManager: this.options.addressManager,
     })
@@ -214,10 +222,18 @@ export class L1IngestionService extends BaseService<L1IngestionServiceOptions> {
           (await this.state.db.getHighestSyncedL1Block()) ||
           this.state.startingL1BlockNumber
         const currentL1Block = await this.state.l1RpcProvider.getBlockNumber()
-        const targetL1Block = Math.min(
+        let targetL1Block = Math.min(
           highestSyncedL1Block + this.options.logsPerPollingInterval,
           currentL1Block - this.options.confirmations
         )
+
+        // Don't sync beyond the shutoff block!
+        if (Number.isInteger(this.options.l1SyncShutoffBlock)) {
+          targetL1Block = Math.min(
+            targetL1Block,
+            this.options.l1SyncShutoffBlock
+          )
+        }
 
         // We're already at the head, so no point in attempting to sync.
         if (highestSyncedL1Block === targetL1Block) {

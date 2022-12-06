@@ -237,6 +237,7 @@ jobs:
       - run:
           name: test and generate coverage
           command: yarn coverage:lcov
+          no_output_timeout: 15m
           environment:
             FOUNDRY_PROFILE: ci
           working_directory: packages/contracts-bedrock
@@ -580,7 +581,7 @@ jobs:
 
   devnet:
     machine:
-      image: ubuntu-2004:2022.07.1
+      image: ubuntu-2204:2022.10.2
       docker_layer_caching: true
     parameters:
       deploy:
@@ -591,13 +592,6 @@ jobs:
       DOCKER_BUILDKIT: 1
     steps:
       - checkout
-      - run:
-          name: Check if we should run
-          command: |
-            CHANGED=$(bash ./ops/docker/ci-builder/check-changed.sh "(contracts-bedrock|op-bindings|op-batcher|op-node|op-proposer|ops-bedrock|sdk|.circlec)/" || echo "TRUE")
-            if [[ "$CHANGED" = "FALSE" ]]; then
-              circleci step halt
-            fi
       - run:
           name: Install latest golang
           command: |

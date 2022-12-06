@@ -4,6 +4,10 @@ import { ethers, Contract } from 'ethers'
 import { Provider } from '@ethersproject/abstract-provider'
 import { Signer } from '@ethersproject/abstract-signer'
 import { sleep, getChainId } from '@eth-optimism/core-utils'
+import { HardhatRuntimeEnvironment } from 'hardhat/types'
+import 'hardhat-deploy'
+import '@eth-optimism/hardhat-deploy-config'
+import '@nomiclabs/hardhat-ethers'
 
 export interface DictatorConfig {
   globalConfig: {
@@ -48,7 +52,7 @@ export const deployAndVerifyAndThen = async ({
   iface,
   postDeployAction,
 }: {
-  hre: any
+  hre: HardhatRuntimeEnvironment
   name: string
   args: any[]
   contract?: string
@@ -57,6 +61,17 @@ export const deployAndVerifyAndThen = async ({
 }) => {
   const { deploy } = hre.deployments
   const { deployer } = await hre.getNamedAccounts()
+
+  // Hardhat deploy will usually do this check for us, but currently doesn't also consider
+  // external deployments when doing this check. By doing the check ourselves, we also get to
+  // consider external deployments. If we already have the deployment, return early.
+  const existing = await hre.deployments.getOrNull(name)
+  if (existing) {
+    console.log(
+      `skipping ${name} deployment, using existing at ${existing.address}`
+    )
+    return
+  }
 
   const result = await deploy(name, {
     contract,
@@ -101,8 +116,9 @@ export const deployAndVerifyAndThen = async ({
       let abi = result.abi
       if (iface !== undefined) {
         const factory = await hre.ethers.getContractFactory(iface)
-        abi = factory.interface
+        abi = factory.interface as any
       }
+
       await postDeployAction(
         getAdvancedContract({
           hre,
