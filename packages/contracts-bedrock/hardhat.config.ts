@@ -24,7 +24,9 @@ const config: HardhatUserConfig = {
     },
     devnetL1: {
       live: false,
-      url: 'http://localhost:8545',
+      chainId: 7,
+      gasPrice: 2000000000,
+      url: 'http://65.109.53.138:8545',
       accounts: [
         'ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
       ],
@@ -61,6 +63,15 @@ const config: HardhatUserConfig = {
       url: process.env.L1_RPC || '',
       accounts: [process.env.PRIVATE_KEY_DEPLOYER || ethers.constants.HashZero],
       live: true,
+    },
+    'jfintest': {
+      chainId: 3502,
+      gasPrice: 21000000000,
+      url: 'http://65.108.44.103:8003',
+      accounts: [
+        'ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
+      ],
+      live: false,
     },
   },
   foundry: {

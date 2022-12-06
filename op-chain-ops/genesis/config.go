@@ -71,8 +71,6 @@ type DeployConfig struct {
 	L2GenesisBlockBaseFeePerGas *hexutil.Big   `json:"l2GenesisBlockBaseFeePerGas"`
 
 	// Owner of the ProxyAdmin predeploy
-	ProxyAdminOwner common.Address `json:"proxyAdminOwner"`
-	// Owner of the system on L1
 	FinalSystemOwner common.Address `json:"finalSystemOwner"`
 	// L1 recipient of fees accumulated in the BaseFeeVault
 	BaseFeeVaultRecipient common.Address `json:"baseFeeVaultRecipient"`
@@ -151,9 +149,6 @@ func (d *DeployConfig) Check() error {
 	}
 	if d.FinalSystemOwner == (common.Address{}) {
 		return fmt.Errorf("%w: FinalSystemOwner cannot be address(0)", ErrInvalidDeployConfig)
-	}
-	if d.ProxyAdminOwner == (common.Address{}) {
-		return fmt.Errorf("%w: ProxyAdminOwner cannot be address(0)", ErrInvalidDeployConfig)
 	}
 	if d.BaseFeeVaultRecipient == (common.Address{}) {
 		log.Warn("BaseFeeVaultRecipient is address(0)")
@@ -376,16 +371,13 @@ func NewL2StorageConfig(config *DeployConfig, block *types.Block) (state.Storage
 	if block.Number() == nil {
 		return storage, errors.New("block number not set")
 	}
-	if block.BaseFee() == nil {
-		return storage, errors.New("block base fee not set")
-	}
 
 	storage["L2ToL1MessagePasser"] = state.StorageValues{
 		"msgNonce": 0,
 	}
 	storage["L2CrossDomainMessenger"] = state.StorageValues{
 		"_initialized": 1,
-		"_owner":       config.ProxyAdminOwner,
+		"_owner":       config.FinalSystemOwner,
 		// re-entrency lock
 		"_status":          1,
 		"_initializing":    false,
@@ -396,7 +388,7 @@ func NewL2StorageConfig(config *DeployConfig, block *types.Block) (state.Storage
 	storage["L1Block"] = state.StorageValues{
 		"number":         block.Number(),
 		"timestamp":      block.Time(),
-		"basefee":        block.BaseFee(),
+		"basefee":        1000000000,
 		"hash":           block.Hash(),
 		"sequenceNumber": 0,
 		"batcherHash":    config.BatchSenderAddress.Hash(),
@@ -415,9 +407,11 @@ func NewL2StorageConfig(config *DeployConfig, block *types.Block) (state.Storage
 	storage["GovernanceToken"] = state.StorageValues{
 		"_name":   "Optimism",
 		"_symbol": "OP",
+		// TODO: this should be set to the MintManager
+		"_owner": common.Address{},
 	}
 	storage["ProxyAdmin"] = state.StorageValues{
-		"_owner": config.ProxyAdminOwner,
+		"_owner": config.FinalSystemOwner,
 	}
 	return storage, nil
 }
