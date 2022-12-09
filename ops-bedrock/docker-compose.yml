@@ -4,6 +4,7 @@ version: '3.4'
 services:
 
   l2:
+    image: j2io/op-geth:beta
     build:
       context: .
       dockerfile: Dockerfile.l2
@@ -21,6 +22,7 @@ services:
   op-node:
     depends_on:
       - l2
+    image: j2io/op-node:beta
     build:
       context: ../
       dockerfile: ./op-node/Dockerfile

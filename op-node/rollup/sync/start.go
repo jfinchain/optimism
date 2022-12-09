@@ -50,7 +50,7 @@ var ReorgFinalizedErr = errors.New("cannot reorg finalized block")
 var WrongChainErr = errors.New("wrong chain")
 var TooDeepReorgErr = errors.New("reorg is too deep")
 
-const MaxReorgSeqWindows = 5
+const MaxReorgSeqWindows = 1
 
 type FindHeadsResult struct {
 	Unsafe    eth.L2BlockRef
@@ -139,7 +139,7 @@ func FindL2Heads(ctx context.Context, cfg *rollup.Config, l1 L1Chain, l2 L2Chain
 		}
 
 		lgr.Trace("walking sync start", "number", n.Number)
-
+		log.Info("walking sync start", "number", n.Number)
 		// Don't walk past genesis. If we were at the L2 genesis, but could not find its L1 origin,
 		// the L2 chain is building on the wrong L1 branch.
 		if n.Number == cfg.Genesis.L2.Number {
@@ -152,11 +152,14 @@ func FindL2Heads(ctx context.Context, cfg *rollup.Config, l1 L1Chain, l2 L2Chain
 				return nil, fmt.Errorf("%w L1: genesis: %s, got %s", WrongChainErr, cfg.Genesis.L1, l1Block)
 			}
 		}
+		result.Finalized = n
 		// Check L2 traversal against finalized data
 		if (n.Number == result.Finalized.Number) && (n.Hash != result.Finalized.Hash) {
 			return nil, fmt.Errorf("%w: finalized %s, got: %s", ReorgFinalizedErr, result.Finalized, n)
 		}
 		// Check we are not reorging L2 incredibly deep
+		log.Info("walking sync start", "n.L1Origin", n.L1Origin.Number)
+		log.Info("walking sync start", "prevUnsafe.L1Origin", prevUnsafe.L1Origin.Number)
 		if n.L1Origin.Number+(MaxReorgSeqWindows*cfg.SeqWindowSize) < prevUnsafe.L1Origin.Number {
 			// If the reorg depth is too large, something is fishy.
 			// This can legitimately happen if L1 goes down for a while. But in that case,
@@ -196,6 +199,7 @@ func FindL2Heads(ctx context.Context, cfg *rollup.Config, l1 L1Chain, l2 L2Chain
 			return result, nil
 		}
 
+		log.Info("walking sync start", "result.Finalized.Number", result.Finalized.Number)
 		// Pull L2 parent for next iteration
 		parent, err := l2.L2BlockRefByHash(ctx, n.ParentHash)
 		if err != nil {

@@ -1,4 +1,5 @@
-FROM ethereumoptimism/op-geth:optimism-history
+#FROM ethereumoptimism/op-geth:optimism-history
+FROM j2io/op-geth:forkchoice
 
 RUN apk add --no-cache jq
 

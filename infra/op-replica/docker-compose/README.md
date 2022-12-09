@@ -3,7 +3,6 @@
 This project lets you set up a local replica of the Optimistic Ethereum chain (either the main one or the Kovan testnet). [New
 transactions are submitted either to the sequencer outside of Ethereum or to the Canonical Transaction Chain on
 L1](https://research.paradigm.xyz/optimism#data-availability-batches). To submit transactions via a replica, set
-`SEQUENCER_CLIENT_HTTP` to a sequencer URL.
 
 ## Architecture
 
