@@ -144,9 +144,9 @@ func SignClearingTx(
 
 	gasTipCap, err := l1Client.SuggestGasTipCap(ctx)
 	if err != nil {
-		if !IsMaxPriorityFeePerGasNotFoundError(err) {
-			return nil, err
-		}
+		//if !IsMaxPriorityFeePerGasNotFoundError(err) {
+		//	return nil, err
+		//}
 
 		// If the transaction failed because the backend does not support
 		// eth_maxPriorityFeePerGas, fallback to using the default constant.
