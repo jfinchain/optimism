@@ -44,8 +44,6 @@ type DeployConfig struct {
 	L2OutputOracleProposer           common.Address `json:"l2OutputOracleProposer"`
 	L2OutputOracleChallenger         common.Address `json:"l2OutputOracleChallenger"`
 
-	SystemConfigOwner common.Address `json:"systemConfigOwner"`
-
 	L1BlockTime                 uint64         `json:"l1BlockTime"`
 	L1GenesisBlockTimestamp     hexutil.Uint64 `json:"l1GenesisBlockTimestamp"`
 	L1GenesisBlockNonce         hexutil.Uint64 `json:"l1GenesisBlockNonce"`
@@ -146,9 +144,6 @@ func (d *DeployConfig) Check() error {
 	if d.L2OutputOracleChallenger == (common.Address{}) {
 		return fmt.Errorf("%w: L2OutputOracleChallenger cannot be address(0)", ErrInvalidDeployConfig)
 	}
-	if d.SystemConfigOwner == (common.Address{}) {
-		return fmt.Errorf("%w: SystemConfigOwner cannot be address(0)", ErrInvalidDeployConfig)
-	}
 	if d.FinalSystemOwner == (common.Address{}) {
 		return fmt.Errorf("%w: FinalSystemOwner cannot be address(0)", ErrInvalidDeployConfig)
 	}
@@ -156,19 +151,19 @@ func (d *DeployConfig) Check() error {
 		return fmt.Errorf("%w: ProxyAdminOwner cannot be address(0)", ErrInvalidDeployConfig)
 	}
 	if d.BaseFeeVaultRecipient == (common.Address{}) {
-		log.Warn("BaseFeeVaultRecipient is address(0)")
+		return fmt.Errorf("%w: BaseFeeVaultRecipient cannot be address(0)", ErrInvalidDeployConfig)
 	}
 	if d.L1FeeVaultRecipient == (common.Address{}) {
-		log.Warn("L1FeeVaultRecipient is address(0)")
+		return fmt.Errorf("%w: L1FeeVaultRecipient cannot be address(0)", ErrInvalidDeployConfig)
 	}
 	if d.SequencerFeeVaultRecipient == (common.Address{}) {
-		log.Warn("SequencerFeeVaultRecipient is address(0)")
+		return fmt.Errorf("%w: SequencerFeeVaultRecipient cannot be address(0)", ErrInvalidDeployConfig)
 	}
 	if d.GasPriceOracleOverhead == 0 {
 		log.Warn("GasPriceOracleOverhead is 0")
 	}
 	if d.GasPriceOracleScalar == 0 {
-		log.Warn("GasPriceOracleScalar is address(0)")
+		log.Warn("GasPriceOracleScalar is 0")
 	}
 	if d.L1StandardBridgeProxy == (common.Address{}) {
 		return fmt.Errorf("%w: L1StandardBridgeProxy cannot be address(0)", ErrInvalidDeployConfig)
