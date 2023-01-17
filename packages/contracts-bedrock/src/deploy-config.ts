@@ -83,11 +83,14 @@ interface RequiredDeployConfig {
 
   /**
    * Starting block number for the output oracle.
+   * Must be greater than or equal to the first Bedrock block. The first L2 output will correspond
+   * to this value plus the submission interval.
    */
   l2OutputOracleStartingBlockNumber?: number
 
   /**
    * Starting timestamp for the output oracle.
+   * MUST be the same as the timestamp of the L2OO start block.
    */
   l2OutputOracleStartingTimestamp?: number
 
@@ -100,6 +103,21 @@ interface RequiredDeployConfig {
    * Address of the L2 output oracle challenger.
    */
   l2OutputOracleChallenger: string
+
+  /**
+   * ERC20 symbol used for the L2 GovernanceToken.
+   */
+  governanceTokenSymbol: string
+
+  /**
+   * ERC20 name used for the L2 GovernanceToken.
+   */
+  governanceTokenName: string
+
+  /**
+   * Owner of the L2 GovernanceToken. Has mint/burn capability.
+   */
+  governanceTokenOwner: string
 
   /**
    * Output finalization period in seconds.
@@ -129,18 +147,15 @@ interface OptionalL1DeployConfig {
  */
 interface OptionalL2DeployConfig {
   l2GenesisBlockNonce: string
-  l2GenesisBlockExtraData: string
   l2GenesisBlockGasLimit: string
   l2GenesisBlockDifficulty: string
   l2GenesisBlockMixHash: string
-  l2GenesisBlockCoinbase: string
   l2GenesisBlockNumber: string
   l2GenesisBlockGasUsed: string
   l2GenesisBlockParentHash: string
   l2GenesisBlockBaseFeePerGas: string
   gasPriceOracleOverhead: number
   gasPriceOracleScalar: number
-  gasPriceOracleDecimals: number
 }
 
 /**
@@ -267,10 +282,6 @@ export const deployConfigSpec: {
     type: 'string', // uint64
     default: '0x0',
   },
-  l2GenesisBlockExtraData: {
-    type: 'string', // important: in the case of L2, which uses post-Merge Ethereum rules, this must be <= 32 bytes.
-    default: ethers.constants.HashZero,
-  },
   l2GenesisBlockGasLimit: {
     type: 'string',
     default: ethers.BigNumber.from(15_000_000).toHexString(),
@@ -282,10 +293,6 @@ export const deployConfigSpec: {
   l2GenesisBlockMixHash: {
     type: 'string', // bytes32
     default: ethers.constants.HashZero,
-  },
-  l2GenesisBlockCoinbase: {
-    type: 'address',
-    default: ethers.constants.AddressZero,
   },
   l2GenesisBlockNumber: {
     type: 'string', // uint64
@@ -311,8 +318,15 @@ export const deployConfigSpec: {
     type: 'number',
     default: 1_000_000,
   },
-  gasPriceOracleDecimals: {
-    type: 'number',
-    default: 6,
+  governanceTokenSymbol: {
+    type: 'string',
+    default: 'OP',
+  },
+  governanceTokenName: {
+    type: 'string',
+    default: 'Optimism',
+  },
+  governanceTokenOwner: {
+    type: 'string',
   },
 }

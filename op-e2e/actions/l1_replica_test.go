@@ -22,6 +22,7 @@ var defaultRollupTestParams = &e2eutils.TestParams{
 	MaxSequencerDrift:   40,
 	SequencerWindowSize: 120,
 	ChannelTimeout:      120,
+	L1BlockTime:         15,
 }
 
 var defaultAlloc = &e2eutils.AllocParams{PrefundTestUsers: true}
@@ -39,7 +40,7 @@ func TestL1Replica_ActL1RPCFail(gt *testing.T) {
 	// mock an RPC failure
 	replica.ActL1RPCFail(t)
 	// check RPC failure
-	l1Cl, err := sources.NewL1Client(replica.RPCClient(), log, nil, sources.L1ClientDefaultConfig(sd.RollupCfg, false))
+	l1Cl, err := sources.NewL1Client(replica.RPCClient(), log, nil, sources.L1ClientDefaultConfig(sd.RollupCfg, false, sources.RPCKindBasic))
 	require.NoError(t, err)
 	_, err = l1Cl.InfoByLabel(t.Ctx(), eth.Unsafe)
 	require.ErrorContains(t, err, "mock")

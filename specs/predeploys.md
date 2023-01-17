@@ -46,11 +46,11 @@ indicates when the predeploy was introduced. The possible values are `Legacy`
 or `Bedrock`. Deprecated contracts should not be used.
 
 | Name                          | Address                                    | Introduced | Deprecated | Proxied |
-| ----------------------------- | ------------------------------------------ | ---------- | ---------- | ------- |
+| ----------------------------- | ------------------------------------------ | ---------- | ---------- |---------|
 | LegacyMessagePasser           | 0x4200000000000000000000000000000000000000 | Legacy     | Yes        | Yes     |
 | DeployerWhitelist             | 0x4200000000000000000000000000000000000002 | Legacy     | Yes        | Yes     |
 | LegacyERC20ETH                | 0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000 | Legacy     | Yes        | No      |
-| WETH9                         | 0x4200000000000000000000000000000000000006 | Legacy     | No         | Yes     |
+| WETH9                         | 0x4200000000000000000000000000000000000006 | Legacy     | No         | No      |
 | L2CrossDomainMessenger        | 0x4200000000000000000000000000000000000007 | Legacy     | No         | Yes     |
 | L2StandardBridge              | 0x4200000000000000000000000000000000000010 | Legacy     | No         | Yes     |
 | SequencerFeeVault             | 0x4200000000000000000000000000000000000011 | Legacy     | No         | Yes     |
@@ -254,7 +254,7 @@ maintaining L1 context in L2. This allows for L1 state to be accessed in L2.
 Address: `0x4200000000000000000000000000000000000018`
 
 The `ProxyAdmin` is the owner of all of the proxy contracts set at the
-predeploys. It is not behind a proxy itself. The owner of the `ProxyAdmin` will
+predeploys. It is itself behind a proxy. The owner of the `ProxyAdmin` will
 have the ability to upgrade any of the other predeploy contracts.
 
 ## SequencerFeeVault

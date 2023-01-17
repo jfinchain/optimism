@@ -3,11 +3,12 @@ import { promises as fs } from 'fs'
 import { task, types } from 'hardhat/config'
 import '@nomiclabs/hardhat-ethers'
 import 'hardhat-deploy'
+import { Deployment } from 'hardhat-deploy/types'
 import {
   predeploys,
   getContractDefinition,
 } from '@eth-optimism/contracts-bedrock'
-import { providers, utils } from 'ethers'
+import { providers, utils, ethers } from 'ethers'
 
 import {
   CrossChainMessenger,
@@ -17,7 +18,9 @@ import {
   DEFAULT_L2_CONTRACT_ADDRESSES,
 } from '../src'
 
-task('deposit-eth', 'Deposits WETH9 onto L2.')
+const { formatEther } = utils
+
+task('deposit-eth', 'Deposits ether to L2.')
   .addParam(
     'l2ProviderUrl',
     'L2 provider URL.',
@@ -66,6 +69,7 @@ task('deposit-eth', 'Deposits WETH9 onto L2.')
     if (balance.eq(0)) {
       throw new Error('Signer has no balance')
     }
+    console.log(`Signer balance: ${formatEther(balance.toString())}`)
 
     const l2Provider = new providers.StaticJsonRpcProvider(args.l2ProviderUrl)
 
@@ -91,6 +95,57 @@ task('deposit-eth', 'Deposits WETH9 onto L2.')
         l1: JSON.parse(data.toString()),
         l2: DEFAULT_L2_CONTRACT_ADDRESSES,
       } as OEContractsLike
+    } else if (!contractAddrs) {
+      // If the contract addresses have not been hardcoded,
+      // attempt to read them from deployment artifacts
+      let Deployment__AddressManager: Deployment
+      try {
+        Deployment__AddressManager = await hre.deployments.get('AddressManager')
+      } catch (e) {
+        Deployment__AddressManager = await hre.deployments.get(
+          'Lib_AddressManager'
+        )
+      }
+      let Deployment__L1CrossDomainMessenger: Deployment
+      try {
+        Deployment__L1CrossDomainMessenger = await hre.deployments.get(
+          'L1CrossDomainMessengerProxy'
+        )
+      } catch (e) {
+        Deployment__L1CrossDomainMessenger = await hre.deployments.get(
+          'Proxy__OVM_L1CrossDomainMessenger'
+        )
+      }
+      let Deployment__L1StandardBridge: Deployment
+      try {
+        Deployment__L1StandardBridge = await hre.deployments.get(
+          'L1StandardBridgeProxy'
+        )
+      } catch (e) {
+        Deployment__L1StandardBridge = await hre.deployments.get(
+          'Proxy__OVM_L1StandardBridge'
+        )
+      }
+
+      const Deployment__OptimismPortal = await hre.deployments.get(
+        'OptimismPortalProxy'
+      )
+      const Deployment__L2OutputOracle = await hre.deployments.get(
+        'L2OutputOracleProxy'
+      )
+      contractAddrs = {
+        l1: {
+          AddressManager: Deployment__AddressManager.address,
+          L1CrossDomainMessenger: Deployment__L1CrossDomainMessenger,
+          L1StandardBridge: Deployment__L1StandardBridge,
+          StateCommitmentChain: ethers.constants.AddressZero,
+          CanonicalTransactionChain: ethers.constants.AddressZero,
+          BondManager: ethers.constants.AddressZero,
+          OptimismPortal: Deployment__OptimismPortal.address,
+          L2OutputOracle: Deployment__L2OutputOracle.address,
+        },
+        l2: DEFAULT_L2_CONTRACT_ADDRESSES,
+      }
     }
 
     const Artifact__L2ToL1MessagePasser = await getContractDefinition(
@@ -163,9 +218,15 @@ task('deposit-eth', 'Deposits WETH9 onto L2.')
       OptimismPortal.address
     )
 
+    const l1BridgeBalanceBefore = await signer.provider.getBalance(
+      L1StandardBridge.address
+    )
+
     // Deposit ETH
     console.log('Depositing ETH through StandardBridge')
+    console.log(`Sending ${formatEther(amount)} ether`)
     const ethDeposit = await messenger.depositETH(amount, { recipient: to })
+    console.log(`Transaction hash: ${ethDeposit.hash}`)
     const depositMessageReceipt = await messenger.waitForMessageReceipt(
       ethDeposit
     )
@@ -173,16 +234,40 @@ task('deposit-eth', 'Deposits WETH9 onto L2.')
       throw new Error('deposit failed')
     }
     console.log(
-      `Deposit complete - ${depositMessageReceipt.transactionReceipt.transactionHash}`
+      `Deposit complete - included in block ${depositMessageReceipt.transactionReceipt.blockNumber}`
     )
 
     const opBalanceAfter = await signer.provider.getBalance(
       OptimismPortal.address
     )
 
+    const l1BridgeBalanceAfter = await signer.provider.getBalance(
+      L1StandardBridge.address
+    )
+
+    console.log(
+      `L1StandardBridge balance before: ${formatEther(l1BridgeBalanceBefore)}`
+    )
+
+    console.log(
+      `L1StandardBridge balance after: ${formatEther(l1BridgeBalanceAfter)}`
+    )
+
+    console.log(
+      `OptimismPortal balance before: ${formatEther(opBalanceBefore)}`
+    )
+    console.log(`OptimismPortal balance after: ${formatEther(opBalanceAfter)}`)
+
     if (!opBalanceBefore.add(amount).eq(opBalanceAfter)) {
       throw new Error(`OptimismPortal balance mismatch`)
     }
+
+    const l2Balance = await l2Provider.getBalance(to)
+    console.log(
+      `L2 balance of deposit recipient: ${utils.formatEther(
+        l2Balance.toString()
+      )}`
+    )
 
     if (!args.withdraw) {
       return
@@ -190,8 +275,11 @@ task('deposit-eth', 'Deposits WETH9 onto L2.')
 
     console.log('Withdrawing ETH')
     const ethWithdraw = await messenger.withdrawETH(withdrawAmount)
+    console.log(`Transaction hash: ${ethWithdraw.hash}`)
     const ethWithdrawReceipt = await ethWithdraw.wait()
-    console.log(`ETH withdrawn on L2 - ${ethWithdrawReceipt.transactionHash}`)
+    console.log(
+      `ETH withdrawn on L2 - included in block ${ethWithdrawReceipt.blockNumber}`
+    )
 
     {
       // check the logs
@@ -225,11 +313,8 @@ task('deposit-eth', 'Deposits WETH9 onto L2.')
       }
     }
 
-    console.log(
-      `Withdrawal on L2 complete: ${ethWithdrawReceipt.transactionHash}`
-    )
-
     console.log('Waiting to be able to prove withdrawal')
+
     const proveInterval = setInterval(async () => {
       const currentStatus = await messenger.getMessageStatus(ethWithdrawReceipt)
       console.log(`Message status: ${MessageStatus[currentStatus]}`)
@@ -246,12 +331,15 @@ task('deposit-eth', 'Deposits WETH9 onto L2.')
 
     console.log('Proving eth withdrawal...')
     const ethProve = await messenger.proveMessage(ethWithdrawReceipt)
+    console.log(`Transaction hash: ${ethProve.hash}`)
     const ethProveReceipt = await ethProve.wait()
     if (ethProveReceipt.status !== 1) {
       throw new Error('Prove withdrawal transaction reverted')
     }
+    console.log('Successfully proved withdrawal')
 
     console.log('Waiting to be able to finalize withdrawal')
+
     const finalizeInterval = setInterval(async () => {
       const currentStatus = await messenger.getMessageStatus(ethWithdrawReceipt)
       console.log(`Message status: ${MessageStatus[currentStatus]}`)
@@ -268,13 +356,14 @@ task('deposit-eth', 'Deposits WETH9 onto L2.')
 
     console.log('Finalizing eth withdrawal...')
     const ethFinalize = await messenger.finalizeMessage(ethWithdrawReceipt)
+    console.log(`Transaction hash: ${ethFinalize.hash}`)
     const ethFinalizeReceipt = await ethFinalize.wait()
     if (ethFinalizeReceipt.status !== 1) {
       throw new Error('Finalize withdrawal reverted')
     }
 
     console.log(
-      `ETH withdrawal complete: ${ethFinalizeReceipt.transactionHash}`
+      `ETH withdrawal complete - included in block ${ethFinalizeReceipt.blockNumber}`
     )
     {
       // Check that the logs are correct

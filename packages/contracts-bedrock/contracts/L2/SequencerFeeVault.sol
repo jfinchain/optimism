@@ -2,8 +2,6 @@
 pragma solidity 0.8.15;
 
 import { Semver } from "../universal/Semver.sol";
-import { L2StandardBridge } from "./L2StandardBridge.sol";
-import { Predeploys } from "../libraries/Predeploys.sol";
 import { FeeVault } from "../universal/FeeVault.sol";
 
 /**
@@ -15,19 +13,17 @@ import { FeeVault } from "../universal/FeeVault.sol";
  */
 contract SequencerFeeVault is FeeVault, Semver {
     /**
-     * @custom:spacer l1FeeWallet
-     * @notice Spacer for backwards compatibility.
+     * @custom:semver 1.0.0
+     *
+     * @param _recipient Address that will receive the accumulated fees.
      */
-    address private spacer_0_0_20;
-
-    /**
-     * @custom:semver 0.0.1
-     */
-    constructor(address _recipient) FeeVault(_recipient, 10 ether) Semver(0, 0, 1) {}
+    constructor(address _recipient) FeeVault(_recipient, 10 ether) Semver(1, 0, 0) {}
 
     /**
      * @custom:legacy
-     * @notice: Legacy getter for the recipient
+     * @notice Legacy getter for the recipient address.
+     *
+     * @return The recipient address.
      */
     function l1FeeWallet() public view returns (address) {
         return RECIPIENT;

@@ -6,16 +6,17 @@ import (
 	"path"
 	"time"
 
-	"github.com/ethereum-optimism/optimism/op-bindings/predeploys"
-	"github.com/ethereum-optimism/optimism/op-chain-ops/genesis"
-	"github.com/ethereum-optimism/optimism/op-node/eth"
-	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ethereum-optimism/optimism/op-bindings/predeploys"
+	"github.com/ethereum-optimism/optimism/op-chain-ops/genesis"
+	"github.com/ethereum-optimism/optimism/op-node/eth"
+	"github.com/ethereum-optimism/optimism/op-node/rollup"
 )
 
 var testingJWTSecret = [32]byte{123}
@@ -47,6 +48,7 @@ type TestParams struct {
 	MaxSequencerDrift   uint64
 	SequencerWindowSize uint64
 	ChannelTimeout      uint64
+	L1BlockTime         uint64
 }
 
 func MakeDeployParams(t require.TestingT, tp *TestParams) *DeployParams {
@@ -73,7 +75,7 @@ func MakeDeployParams(t require.TestingT, tp *TestParams) *DeployParams {
 
 		FinalSystemOwner: addresses.SysCfgOwner,
 
-		L1BlockTime:                 15,
+		L1BlockTime:                 tp.L1BlockTime,
 		L1GenesisBlockNonce:         0,
 		CliqueSignerAddress:         common.Address{}, // proof of stake, no clique
 		L1GenesisBlockTimestamp:     hexutil.Uint64(time.Now().Unix()),
@@ -88,11 +90,9 @@ func MakeDeployParams(t require.TestingT, tp *TestParams) *DeployParams {
 		FinalizationPeriodSeconds:   12,
 
 		L2GenesisBlockNonce:         0,
-		L2GenesisBlockExtraData:     []byte{},
 		L2GenesisBlockGasLimit:      15_000_000,
 		L2GenesisBlockDifficulty:    uint64ToBig(0),
 		L2GenesisBlockMixHash:       common.Hash{},
-		L2GenesisBlockCoinbase:      predeploys.SequencerFeeVaultAddr,
 		L2GenesisBlockNumber:        0,
 		L2GenesisBlockGasUsed:       0,
 		L2GenesisBlockParentHash:    common.Hash{},
@@ -207,7 +207,6 @@ func Setup(t require.TestingT, deployParams *DeployParams, alloc *AllocParams) *
 		ChannelTimeout:         deployConf.ChannelTimeout,
 		L1ChainID:              new(big.Int).SetUint64(deployConf.L1ChainID),
 		L2ChainID:              new(big.Int).SetUint64(deployConf.L2ChainID),
-		P2PSequencerAddress:    deployConf.P2PSequencerAddress,
 		BatchInboxAddress:      deployConf.BatchInboxAddress,
 		DepositContractAddress: predeploys.DevOptimismPortalAddr,
 		L1SystemConfigAddress:  predeploys.DevSystemConfigAddr,
@@ -264,7 +263,6 @@ func ForkedDeployConfig(t require.TestingT, mnemonicCfg *MnemonicConfig, startBl
 		L2OutputOracleStartingTimestamp:  int(startBlock.Time()),
 		L2OutputOracleProposer:           addrs.Proposer,
 		L2OutputOracleChallenger:         addrs.Deployer,
-		L2GenesisBlockCoinbase:           common.HexToAddress("0x42000000000000000000000000000000000000f0"),
 		L2GenesisBlockGasLimit:           hexutil.Uint64(15_000_000),
 		// taken from devnet, need to check this
 		L2GenesisBlockBaseFeePerGas: uint64ToBig(0x3B9ACA00),
