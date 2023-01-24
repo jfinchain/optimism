@@ -14,6 +14,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/core/types"
+
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
@@ -36,27 +39,27 @@ const (
 var emptyArrayResponse = json.RawMessage("[]")
 
 type Server struct {
-	backendGroups              map[string]*BackendGroup
-	wsBackendGroup             *BackendGroup
-	wsMethodWhitelist          *StringSet
-	rpcMethodMappings          map[string]string
-	maxBodySize                int64
-	enableRequestLog           bool
-	maxRequestBodyLogLen       int
-	authenticatedPaths         map[string]string
-	timeout                    time.Duration
-	maxUpstreamBatchSize       int
-	maxBatchSize               int
-	upgrader                   *websocket.Upgrader
-	disableFrontendRateLimiter bool
-	mainLim                    FrontendRateLimiter
-	overrideLims               map[string]FrontendRateLimiter
-	limExemptOrigins           []*regexp.Regexp
-	limExemptUserAgents        []*regexp.Regexp
-	rpcServer                  *http.Server
-	wsServer                   *http.Server
-	cache                      RPCCache
-	srvMu                      sync.Mutex
+	backendGroups        map[string]*BackendGroup
+	wsBackendGroup       *BackendGroup
+	wsMethodWhitelist    *StringSet
+	rpcMethodMappings    map[string]string
+	maxBodySize          int64
+	enableRequestLog     bool
+	maxRequestBodyLogLen int
+	authenticatedPaths   map[string]string
+	timeout              time.Duration
+	maxUpstreamBatchSize int
+	maxBatchSize         int
+	upgrader             *websocket.Upgrader
+	mainLim              FrontendRateLimiter
+	overrideLims         map[string]FrontendRateLimiter
+	senderLim            FrontendRateLimiter
+	limExemptOrigins     []*regexp.Regexp
+	limExemptUserAgents  []*regexp.Regexp
+	rpcServer            *http.Server
+	wsServer             *http.Server
+	cache                RPCCache
+	srvMu                sync.Mutex
 }
 
 type limiterFunc func(method string) bool
@@ -72,6 +75,7 @@ func NewServer(
 	maxUpstreamBatchSize int,
 	cache RPCCache,
 	rateLimitConfig RateLimitConfig,
+	senderRateLimitConfig SenderRateLimitConfig,
 	enableRequestLog bool,
 	maxRequestBodyLogLen int,
 	maxBatchSize int,
@@ -137,6 +141,10 @@ func NewServer(
 			return nil, err
 		}
 	}
+	var senderLim FrontendRateLimiter
+	if senderRateLimitConfig.Enabled {
+		senderLim = limiterFactory(time.Duration(senderRateLimitConfig.Interval), senderRateLimitConfig.Limit, "senders")
+	}
 
 	return &Server{
 		backendGroups:        backendGroups,
@@ -154,11 +162,11 @@ func NewServer(
 		upgrader: &websocket.Upgrader{
 			HandshakeTimeout: 5 * time.Second,
 		},
-		mainLim:                    mainLim,
-		overrideLims:               overrideLims,
-		limExemptOrigins:           limExemptOrigins,
-		limExemptUserAgents:        limExemptUserAgents,
-		disableFrontendRateLimiter: disableFrontendRateLimiter,
+		mainLim:             mainLim,
+		overrideLims:        overrideLims,
+		senderLim:           senderLim,
+		limExemptOrigins:    limExemptOrigins,
+		limExemptUserAgents: limExemptUserAgents,
 	}, nil
 }
 
@@ -412,6 +420,17 @@ func (s *Server) handleBatchRPC(ctx context.Context, reqs []json.RawMessage, isL
 			continue
 		}
 
+		// Apply a sender-based rate limit if it is enabled. Note that sender-based rate
+		// limits apply regardless of origin or user-agent. As such, they don't use the
+		// isLimited method.
+		if parsedReq.Method == "eth_sendRawTransaction" && s.senderLim != nil {
+			if err := s.rateLimitSender(ctx, parsedReq); err != nil {
+				RecordRPCError(ctx, BackendProxyd, parsedReq.Method, err)
+				responses[i] = NewRPCErrorRes(parsedReq.ID, err)
+				continue
+			}
+		}
+
 		id := string(parsedReq.ID)
 		// If this is a duplicate Request ID, move the Request to a new batchGroup
 		ids[id]++
@@ -576,6 +595,54 @@ func (s *Server) isUnlimitedUserAgent(origin string) bool {
 		}
 	}
 	return false
+}
+
+func (s *Server) rateLimitSender(ctx context.Context, req *RPCReq) error {
+	var params []string
+	if err := json.Unmarshal(req.Params, &params); err != nil {
+		log.Debug("error unmarshaling raw transaction params", "err", err, "req_Id", GetReqID(ctx))
+		return ErrParseErr
+	}
+
+	if len(params) != 1 {
+		log.Debug("raw transaction request has invalid number of params", "req_id", GetReqID(ctx))
+		// The error below is identical to the one Geth responds with.
+		return ErrInvalidParams("missing value for required argument 0")
+	}
+
+	var data hexutil.Bytes
+	if err := data.UnmarshalText([]byte(params[0])); err != nil {
+		log.Debug("error decoding raw tx data", "err", err, "req_id", GetReqID(ctx))
+		// Geth returns the raw error from UnmarshalText.
+		return ErrInvalidParams(err.Error())
+	}
+
+	// Inflates a types.Transaction object from the transaction's raw bytes.
+	tx := new(types.Transaction)
+	if err := tx.UnmarshalBinary(data); err != nil {
+		log.Debug("could not unmarshal transaction", "err", err, "req_id", GetReqID(ctx))
+		return ErrInvalidParams(err.Error())
+	}
+
+	// Convert the transaction into a Message object so that we can get the
+	// sender. This method performs an ecrecover, which can be expensive.
+	msg, err := tx.AsMessage(types.LatestSignerForChainID(tx.ChainId()), nil)
+	if err != nil {
+		log.Debug("could not get message from transaction", "err", err, "req_id", GetReqID(ctx))
+		return ErrInvalidParams(err.Error())
+	}
+
+	ok, err := s.senderLim.Take(ctx, msg.From().Hex())
+	if err != nil {
+		log.Error("error taking from sender limiter", "err", err, "req_id", GetReqID(ctx))
+		return ErrInternal
+	}
+	if !ok {
+		log.Debug("sender rate limit exceeded", "sender", msg.From(), "req_id", GetReqID(ctx))
+		return ErrOverSenderRateLimit
+	}
+
+	return nil
 }
 
 func setCacheHeader(w http.ResponseWriter, cached bool) {
