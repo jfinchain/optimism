@@ -152,6 +152,7 @@ func FindL2Heads(ctx context.Context, cfg *rollup.Config, l1 L1Chain, l2 L2Chain
 				return nil, fmt.Errorf("%w L1: genesis: %s, got %s", WrongChainErr, cfg.Genesis.L1, l1Block)
 			}
 		}
+		// result.Finalized = n
 		// Check L2 traversal against finalized data
 		if (n.Number == result.Finalized.Number) && (n.Hash != result.Finalized.Hash) {
 			return nil, fmt.Errorf("%w: finalized %s, got: %s", ReorgFinalizedErr, result.Finalized, n)

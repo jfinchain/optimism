@@ -35,18 +35,6 @@ def main():
     rollup_config_path = pjoin(devnet_dir, 'rollup.json')
     os.makedirs(devnet_dir, exist_ok=True)
 
-    if os.path.exists(genesis_l1_path):
-        log.info('L2 genesis already generated.')
-    else:
-        log.info('Generating L1 genesis.')
-        write_json(genesis_l1_path, GENESIS_TMPL)
-
-    log.info('Starting L1.')
-    run_command(['docker-compose', 'up', '-d', 'l1'], cwd=ops_bedrock_dir, env={
-        'PWD': ops_bedrock_dir
-    })
-    wait_up(8545)
-
     log.info('Generating network config.')
     devnet_cfg_orig = pjoin(contracts_bedrock_dir, 'deploy-config', 'devnetL1.json')
     devnet_cfg_backup = pjoin(devnet_dir, 'devnetL1.json.bak')
@@ -106,13 +94,13 @@ def main():
         shutil.move(devnet_cfg_backup, devnet_cfg_orig)
 
     log.info('Bringing up L2.')
-    run_command(['docker-compose', 'up', '-d', 'l2'], cwd=ops_bedrock_dir, env={
+    run_command(['docker','compose', 'up', '-d', 'l2'], cwd=ops_bedrock_dir, env={
         'PWD': ops_bedrock_dir
     })
     wait_up(9545)
 
     log.info('Bringing up everything else.')
-    run_command(['docker-compose', 'up', '-d', 'op-node', 'op-proposer', 'op-batcher'], cwd=ops_bedrock_dir, env={
+    run_command(['docker','compose', 'up', '-d', 'op-node', 'op-proposer', 'op-batcher'], cwd=ops_bedrock_dir, env={
         'PWD': ops_bedrock_dir,
         'L2OO_ADDRESS': addresses['L2OutputOracleProxy'],
         'SEQUENCER_BATCH_INBOX_ADDRESS': rollup_config['batch_inbox_address']

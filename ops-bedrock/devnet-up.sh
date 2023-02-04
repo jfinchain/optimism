@@ -69,29 +69,22 @@ if [ ! -f "$DEVNET/done" ]; then
 
   (
     cd "$OP_NODE"
-    go run cmd/main.go genesis devnet \
+    go run cmd/main.go genesis l2 \
+        --l1-rpc https://rpc.thaichain.org \
+        --deployment-dir $CONTRACTS_BEDROCK/deployments/devnetL1 \
         --deploy-config /tmp/bedrock-devnet-deploy-config.json \
-        --outfile.l1 $DEVNET/genesis-l1.json \
         --outfile.l2 $DEVNET/genesis-l2.json \
         --outfile.rollup $DEVNET/rollup.json
     touch "$DEVNET/done"
   )
 fi
-
-# Bring up L1.
-(
-  cd ops-bedrock
-  echo "Bringing up L1..."
-  DOCKER_BUILDKIT=1 docker-compose build --progress plain
-  docker-compose up -d l1
-  wait_up $L1_URL
-)
+exit
 
 # Bring up L2.
 (
   cd ops-bedrock
   echo "Bringing up L2..."
-  docker-compose up -d l2
+  docker compose up -d l2
   wait_up $L2_URL
 )
 
@@ -104,10 +97,8 @@ SEQUENCER_BATCH_INBOX_ADDRESS="$(cat $DEVNET/rollup.json | jq -r '.batch_inbox_a
   echo "Bringing up devnet..."
   L2OO_ADDRESS="$L2OO_ADDRESS" \
       SEQUENCER_BATCH_INBOX_ADDRESS="$SEQUENCER_BATCH_INBOX_ADDRESS" \
-      docker-compose up -d op-proposer op-batcher
+      docker compose up -d op-proposer op-batcher
 
-  echo "Bringing up stateviz webserver..."
-  docker-compose up -d stateviz
 )
 
 echo "Devnet ready."
