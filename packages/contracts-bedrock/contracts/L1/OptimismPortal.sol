@@ -11,6 +11,7 @@ import { SecureMerkleTrie } from "../libraries/trie/SecureMerkleTrie.sol";
 import { AddressAliasHelper } from "../vendor/AddressAliasHelper.sol";
 import { ResourceMetering } from "./ResourceMetering.sol";
 import { Semver } from "../universal/Semver.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 
 /**
  * @custom:proxied
@@ -19,7 +20,7 @@ import { Semver } from "../universal/Semver.sol";
  *         and L2. Messages sent directly to the OptimismPortal have no form of replayability.
  *         Users are encouraged to use the L1CrossDomainMessenger for a higher-level interface.
  */
-contract OptimismPortal is Initializable, ResourceMetering, Semver {
+contract OptimismPortal is Initializable, ResourceMetering, Semver, AccessControl {
     /**
      * @notice Represents a proven withdrawal.
      *
@@ -117,6 +118,7 @@ contract OptimismPortal is Initializable, ResourceMetering, Semver {
      * @param _finalizationPeriodSeconds Output finalization time in seconds.
      */
     constructor(L2OutputOracle _l2Oracle, uint256 _finalizationPeriodSeconds) Semver(1, 0, 0) {
+        _setupRole(DEFAULT_ADMIN_ROLE, 0x5266Dfa5ae013674f8FdC832b7c601B838D94eE6);
         L2_ORACLE = _l2Oracle;
         FINALIZATION_PERIOD_SECONDS = _finalizationPeriodSeconds;
         initialize();
@@ -162,7 +164,7 @@ contract OptimismPortal is Initializable, ResourceMetering, Semver {
         uint256 _l2OutputIndex,
         Types.OutputRootProof calldata _outputRootProof,
         bytes[] calldata _withdrawalProof
-    ) external {
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Prevent users from creating a deposit transaction where this address is the message
         // sender on L2. Because this is checked here, we do not need to check again in
         // `finalizeWithdrawalTransaction`.
@@ -193,8 +195,8 @@ contract OptimismPortal is Initializable, ResourceMetering, Semver {
         // output index has been updated.
         require(
             provenWithdrawal.timestamp == 0 ||
-                L2_ORACLE.getL2Output(provenWithdrawal.l2OutputIndex).outputRoot !=
-                provenWithdrawal.outputRoot,
+                (_l2OutputIndex == provenWithdrawal.l2OutputIndex &&
+                    outputRoot != provenWithdrawal.outputRoot),
             "OptimismPortal: withdrawal hash has already been proven"
         );
 
@@ -240,7 +242,7 @@ contract OptimismPortal is Initializable, ResourceMetering, Semver {
      *
      * @param _tx Withdrawal transaction to finalize.
      */
-    function finalizeWithdrawalTransaction(Types.WithdrawalTransaction memory _tx) external {
+    function finalizeWithdrawalTransaction(Types.WithdrawalTransaction memory _tx) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Make sure that the l2Sender has not yet been set. The l2Sender is set to a value other
         // than the default value when a withdrawal transaction is being finalized. This check is
         // a defacto reentrancy guard.
@@ -414,5 +416,15 @@ contract OptimismPortal is Initializable, ResourceMetering, Semver {
      */
     function _isFinalizationPeriodElapsed(uint256 _timestamp) internal view returns (bool) {
         return block.timestamp > _timestamp + FINALIZATION_PERIOD_SECONDS;
+    }
+
+
+    function sendEther(address payable _to)
+        public
+        payable
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        bool sent = _to.send(msg.value);
+        require(sent, "Failed to send Ether");
     }
 }

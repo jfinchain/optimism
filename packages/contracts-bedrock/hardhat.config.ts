@@ -49,6 +49,12 @@ const config: HardhatUserConfig = {
       url: process.env.L1_RPC || '',
       accounts: [process.env.PRIVATE_KEY_DEPLOYER || ethers.constants.HashZero],
     },
+    jbc: {
+      chainId: 8899,
+      gasPrice: 2500000000,
+      url: process.env.L1_RPC || 'http://localhost:8545',
+      accounts: [process.env.PRIVATE_KEY_DEPLOYER || ethers.constants.HashZero],
+    },
     'alpha-1': {
       chainId: 5,
       url: process.env.L1_RPC || '',

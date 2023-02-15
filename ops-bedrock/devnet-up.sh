@@ -69,14 +69,17 @@ if [ ! -f "$DEVNET/done" ]; then
 
   (
     cd "$OP_NODE"
-    go run cmd/main.go genesis devnet \
+    go run cmd/main.go genesis l2 \
+        --l1-rpc http://localhost:8545 \
         --deploy-config /tmp/bedrock-devnet-deploy-config.json \
-        --outfile.l1 $DEVNET/genesis-l1.json \
+        --deployment-dir ../packages/contracts-bedrock/deployments/devnetL1 \
         --outfile.l2 $DEVNET/genesis-l2.json \
         --outfile.rollup $DEVNET/rollup.json
     touch "$DEVNET/done"
   )
 fi
+
+exit 
 
 # Bring up L1.
 (
@@ -96,12 +99,14 @@ fi
 )
 
 L2OO_ADDRESS="0x6900000000000000000000000000000000000000"
+SEQUENCER_BATCH_INBOX_ADDRESS="$(cat $DEVNET/rollup.json | jq -r '.batch_inbox_address')"
 
 # Bring up everything else.
 (
   cd ops-bedrock
   echo "Bringing up devnet..."
   L2OO_ADDRESS="$L2OO_ADDRESS" \
+      SEQUENCER_BATCH_INBOX_ADDRESS="$SEQUENCER_BATCH_INBOX_ADDRESS" \
       docker-compose up -d op-proposer op-batcher
 
   echo "Bringing up stateviz webserver..."
