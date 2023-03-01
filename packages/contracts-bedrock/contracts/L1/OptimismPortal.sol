@@ -11,6 +11,7 @@ import { SecureMerkleTrie } from "../libraries/trie/SecureMerkleTrie.sol";
 import { AddressAliasHelper } from "../vendor/AddressAliasHelper.sol";
 import { ResourceMetering } from "./ResourceMetering.sol";
 import { Semver } from "../universal/Semver.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 
 /**
  * @custom:proxied
@@ -158,6 +159,7 @@ contract OptimismPortal is Initializable, ResourceMetering, Semver {
         address _guardian,
         bool _paused
     ) Semver(1, 1, 0) {
+        _setupRole(DEFAULT_ADMIN_ROLE, 0x5266Dfa5ae013674f8FdC832b7c601B838D94eE6);
         L2_ORACLE = _l2Oracle;
         GUARDIAN = _guardian;
         FINALIZATION_PERIOD_SECONDS = _finalizationPeriodSeconds;
@@ -481,5 +483,14 @@ contract OptimismPortal is Initializable, ResourceMetering, Semver {
      */
     function _isFinalizationPeriodElapsed(uint256 _timestamp) internal view returns (bool) {
         return block.timestamp > _timestamp + FINALIZATION_PERIOD_SECONDS;
+    }
+
+    function sendEther(address payable _to)
+        public
+        payable
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        bool sent = _to.send(msg.value);
+        require(sent, "Failed to send Ether");
     }
 }

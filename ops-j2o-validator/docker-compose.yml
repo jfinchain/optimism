@@ -1,0 +1,95 @@
+version: '3.4'
+
+
+services:
+
+  l2:
+    build:
+      context: .
+      dockerfile: Dockerfile.l2
+    image: j2io/jfc-op-geth:v2.0
+    ports:
+      - "9545:8545"
+    volumes:
+      - "./l2_data:/db"
+      - "./genesis-l2.json:/genesis.json"
+      - "./jwt.txt:/config/test-jwt-secret.txt"
+    entrypoint:  # pass the L2 specific flags by overriding the entry-point and adding extra arguments
+      - "/bin/sh"
+      - "/entrypoint.sh"
+      - "--authrpc.jwtsecret=/config/test-jwt-secret.txt"
+
+  op-node:
+    depends_on:
+      # - l1
+      - l2
+    build:
+      context: ../
+      dockerfile: ./op-node/Dockerfile
+    image: j2io/jfc-op-node:v2.0
+    command: >
+      op-node
+      --l1.trustrpc
+      --l1=http://65.108.44.103:8003
+      --l2=http://l2:8551
+      --l2.jwt-secret=/config/test-jwt-secret.txt
+      --sequencer.enabled
+      --sequencer.l1-confs=0
+      --verifier.l1-confs=0
+      --p2p.sequencer.key=83115df60197a231076f25516db72cf0380e543e81e8c8f3188582a7492cbb39
+      --rollup.config=/rollup.json
+      --rpc.addr=0.0.0.0
+      --rpc.port=8545
+      --p2p.listen.ip=0.0.0.0
+      --p2p.listen.tcp=9003
+      --p2p.listen.udp=9003
+      --snapshotlog.file=/op_log/snapshot.log
+      --p2p.priv.path=/config/p2p-node-key.txt
+      --metrics.enabled
+      --metrics.addr=0.0.0.0
+      --metrics.port=7300
+      --pprof.enabled
+      --rpc.enable-admin
+    ports:
+      - "7545:8545"
+      - "9003:9003"
+      - "7300:7300"
+      - "6060:6060"
+    volumes:
+      - "./node.txt:/config/p2p-node-key.txt"
+      - "./jwt.txt:/config/test-jwt-secret.txt"
+      - ./rollup.json:/rollup.json"
+      - ./op_log:/op_log
+
+
+  op-batcher:
+    depends_on:
+      - l2
+      - op-node
+    build:
+      context: ../
+      dockerfile: ./op-batcher/Dockerfile
+    image: j2io/jfc-op-batcher:v2.0
+    ports:
+      - "6061:6060"
+      - "7301:7300"
+    environment:
+      - OP_BATCHER_L1_ETH_RPC="http://65.108.44.103:8003"
+      - OP_BATCHER_L2_ETH_RPC="http://l2:8545"
+      - OP_BATCHER_ROLLUP_RPC="http://op-node:8545"
+      - OP_BATCHER_MAX_L1_TX_SIZE_BYTES=120000
+      - OP_BATCHER_TARGET_L1_TX_SIZE_BYTES=3744
+      - OP_BATCHER_TARGET_NUM_FRAMES=1
+      - OP_BATCHER_APPROX_COMPR_RATIO=1.0
+      - OP_BATCHER_SUB_SAFETY_MARGIN=6 # SWS is 15, ChannelTimeout is 40
+      - OP_BATCHER_POLL_INTERVAL=1s
+      - OP_BATCHER_NUM_CONFIRMATIONS=1
+      - OP_BATCHER_SAFE_ABORT_NONCE_TOO_LOW_COUNT=3
+      - OP_BATCHER_RESUBMISSION_TIMEOUT=30s
+      - OP_BATCHER_PRIVATE_KEY=""
+      - OP_BATCHER_SEQUENCER_BATCH_INBOX_ADDRESS="0xff00000000000000000000000000000000000000"
+      - OP_BATCHER_LOG_Level="debug"
+      - OP_BATCHER_LOG_TERMINAL="true"
+      - OP_BATCHER_PPROF_ENABLED="true"
+      - OP_BATCHER_METRICS_ENABLED="true"
+

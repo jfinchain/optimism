@@ -25,6 +25,11 @@ const config: HardhatUserConfig = {
     mainnet: {
       url: process.env.RPC_URL || 'http://localhost:8545',
     },
+    'jfin-testnet': {
+      live: false,
+      url: 'http://65.108.44.103:8003',
+      accounts: [process.env.PRIVATE_KEY_DEPLOYER || ethers.constants.HashZero],
+    },
     'bsc-qanet': {
       live: false,
       url: 'http://172.22.41.240:8545',
