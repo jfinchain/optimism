@@ -99,7 +99,7 @@ func (t *TransactionManager) calcGasTipAndFeeCap(ctx context.Context) (gasTipCap
 // It queries L1 for the current fee market conditions as well as for the nonce.
 // NOTE: This method SHOULD NOT publish the resulting transaction.
 func (t *TransactionManager) CraftTx(ctx context.Context, data []byte) (*types.Transaction, error) {
-	gasTipCap, gasFeeCap, err := t.calcGasTipAndFeeCap(ctx)
+	gasPrice, err := t.l1Client.SuggestGasPrice(context.Background())
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +114,7 @@ func (t *TransactionManager) CraftTx(ctx context.Context, data []byte) (*types.T
 	rawTx := &types.LegacyTx{
 		Nonce:    nonce,
 		To:       &t.batchInboxAddress,
-		GasPrice: big.NewInt(0).Add(gasTipCap, gasFeeCap),
+		GasPrice: gasPrice,
 		Data:     data,
 	}
 	t.log.Info("creating tx", "to", rawTx.To, "from", t.senderAddress)
