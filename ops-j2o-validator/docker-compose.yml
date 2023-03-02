@@ -36,7 +36,7 @@ services:
       --sequencer.enabled
       --sequencer.l1-confs=0
       --verifier.l1-confs=0
-      --p2p.sequencer.key=83115df60197a231076f25516db72cf0380e543e81e8c8f3188582a7492cbb39
+      --p2p.sequencer.key=59f301cf0466ab0781cfb81131a9bb765a0cc81d5882a21a9cc508016ed37fbb
       --rollup.config=/rollup.json
       --rpc.addr=0.0.0.0
       --rpc.port=8545
@@ -58,7 +58,7 @@ services:
     volumes:
       - "./node.txt:/config/p2p-node-key.txt"
       - "./jwt.txt:/config/test-jwt-secret.txt"
-      - ./rollup.json:/rollup.json"
+      - "./rollup.json:/rollup.json"
       - ./op_log:/op_log
 
 
@@ -74,22 +74,22 @@ services:
       - "6061:6060"
       - "7301:7300"
     environment:
-      - OP_BATCHER_L1_ETH_RPC="http://65.108.44.103:8003"
-      - OP_BATCHER_L2_ETH_RPC="http://l2:8545"
-      - OP_BATCHER_ROLLUP_RPC="http://op-node:8545"
-      - OP_BATCHER_MAX_L1_TX_SIZE_BYTES=120000
-      - OP_BATCHER_TARGET_L1_TX_SIZE_BYTES=3744
-      - OP_BATCHER_TARGET_NUM_FRAMES=1
-      - OP_BATCHER_APPROX_COMPR_RATIO=1.0
-      - OP_BATCHER_SUB_SAFETY_MARGIN=6 # SWS is 15, ChannelTimeout is 40
-      - OP_BATCHER_POLL_INTERVAL=1s
-      - OP_BATCHER_NUM_CONFIRMATIONS=1
-      - OP_BATCHER_SAFE_ABORT_NONCE_TOO_LOW_COUNT=3
-      - OP_BATCHER_RESUBMISSION_TIMEOUT=30s
-      - OP_BATCHER_PRIVATE_KEY=""
-      - OP_BATCHER_SEQUENCER_BATCH_INBOX_ADDRESS="0xff00000000000000000000000000000000000000"
-      - OP_BATCHER_LOG_Level="debug"
-      - OP_BATCHER_LOG_TERMINAL="true"
-      - OP_BATCHER_PPROF_ENABLED="true"
-      - OP_BATCHER_METRICS_ENABLED="true"
+      OP_BATCHER_L1_ETH_RPC: http://65.108.44.103:8003
+      OP_BATCHER_L2_ETH_RPC: http://l2:8545
+      OP_BATCHER_ROLLUP_RPC: http://op-node:8545
+      OP_BATCHER_MAX_L1_TX_SIZE_BYTES: 120000
+      OP_BATCHER_TARGET_L1_TX_SIZE_BYTES: 3744
+      OP_BATCHER_TARGET_NUM_FRAMES: 1
+      OP_BATCHER_APPROX_COMPR_RATIO: 1.0
+      OP_BATCHER_SUB_SAFETY_MARGIN: 6 # SWS is 15, ChannelTimeout is 40
+      OP_BATCHER_POLL_INTERVAL: 1s
+      OP_BATCHER_NUM_CONFIRMATIONS: 1
+      OP_BATCHER_SAFE_ABORT_NONCE_TOO_LOW_COUNT: 3
+      OP_BATCHER_RESUBMISSION_TIMEOUT: 30s
+      OP_BATCHER_PRIVATE_KEY: "59f301cf0466ab0781cfb81131a9bb765a0cc81d5882a21a9cc508016ed37fbb"
+      OP_BATCHER_SEQUENCER_BATCH_INBOX_ADDRESS: "0xff00000000000000000000000000000000350201"
+      OP_BATCHER_LOG_Level: "debug"
+      OP_BATCHER_LOG_TERMINAL: "true"
+      OP_BATCHER_PPROF_ENABLED: "true"
+      OP_BATCHER_METRICS_ENABLED: "true"
 

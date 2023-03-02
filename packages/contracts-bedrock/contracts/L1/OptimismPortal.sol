@@ -20,7 +20,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
  *         and L2. Messages sent directly to the OptimismPortal have no form of replayability.
  *         Users are encouraged to use the L1CrossDomainMessenger for a higher-level interface.
  */
-contract OptimismPortal is Initializable, ResourceMetering, Semver {
+contract OptimismPortal is Initializable, ResourceMetering, Semver, AccessControl {
     /**
      * @notice Represents a proven withdrawal.
      *
@@ -159,7 +159,7 @@ contract OptimismPortal is Initializable, ResourceMetering, Semver {
         address _guardian,
         bool _paused
     ) Semver(1, 1, 0) {
-        _setupRole(DEFAULT_ADMIN_ROLE, 0x5266Dfa5ae013674f8FdC832b7c601B838D94eE6);
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         L2_ORACLE = _l2Oracle;
         GUARDIAN = _guardian;
         FINALIZATION_PERIOD_SECONDS = _finalizationPeriodSeconds;
