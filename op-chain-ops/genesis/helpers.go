@@ -40,7 +40,7 @@ var DevAccounts = []common.Address{
 }
 
 // The devBalance is the amount of wei that a dev account is funded with.
-var devBalance = hexutil.MustDecodeBig("0x324518553658426726783156020576256")
+var devBalance = hexutil.MustDecodeBig("0x33B2E3C9FD0803CE8000000")
 
 // AddressToCodeNamespace takes a predeploy address and computes
 // the implementation address that the implementation should be deployed at
