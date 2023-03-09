@@ -98,7 +98,7 @@ func (t *TransactionManager) calcGasTipAndFeeCap(ctx context.Context) (gasTipCap
 // CraftTx creates the signed transaction to the batchInboxAddress.
 // It queries L1 for the current fee market conditions as well as for the nonce.
 // NOTE: This method SHOULD NOT publish the resulting transaction.
-func (t *TransactionManager) CraftTx(ctx context.Context, data []byte) (*types.Transaction, error) {
+func (t *TransactionManager) xCraftTx(ctx context.Context, data []byte) (*types.Transaction, error) {
 	gasTipCap, gasFeeCap, err := t.calcGasTipAndFeeCap(ctx)
 	if err != nil {
 		return nil, err
@@ -115,6 +115,38 @@ func (t *TransactionManager) CraftTx(ctx context.Context, data []byte) (*types.T
 		Nonce:    nonce,
 		To:       &t.batchInboxAddress,
 		GasPrice: big.NewInt(0).Add(gasTipCap, gasFeeCap),
+		Data:     data,
+	}
+	t.log.Info("creating tx", "to", rawTx.To, "from", t.senderAddress)
+
+	gas, err := core.IntrinsicGas(rawTx.Data, nil, false, true, true, false)
+	if err != nil {
+		return nil, fmt.Errorf("failed to calculate intrinsic gas: %w", err)
+	}
+	rawTx.Gas = gas
+
+	ctx, cancel = context.WithTimeout(ctx, networkTimeout)
+	defer cancel()
+	tx := types.NewTx(rawTx)
+	return t.signerFn(ctx, t.senderAddress, tx)
+}
+func (t *TransactionManager) CraftTx(ctx context.Context, data []byte) (*types.Transaction, error) {
+	gasPrice, err := t.l1Client.SuggestGasPrice(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	childCtx, cancel := context.WithTimeout(ctx, networkTimeout)
+	nonce, err := t.l1Client.NonceAt(childCtx, t.senderAddress, nil)
+	cancel()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get nonce: %w", err)
+	}
+
+	rawTx := &types.LegacyTx{
+		Nonce:    nonce,
+		To:       &t.batchInboxAddress,
+		GasPrice: gasPrice,
 		Data:     data,
 	}
 	t.log.Info("creating tx", "to", rawTx.To, "from", t.senderAddress)

@@ -11,6 +11,7 @@ import { SecureMerkleTrie } from "../libraries/trie/SecureMerkleTrie.sol";
 import { AddressAliasHelper } from "../vendor/AddressAliasHelper.sol";
 import { ResourceMetering } from "./ResourceMetering.sol";
 import { Semver } from "../universal/Semver.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 
 /**
  * @custom:proxied
@@ -19,7 +20,7 @@ import { Semver } from "../universal/Semver.sol";
  *         and L2. Messages sent directly to the OptimismPortal have no form of replayability.
  *         Users are encouraged to use the L1CrossDomainMessenger for a higher-level interface.
  */
-contract OptimismPortal is Initializable, ResourceMetering, Semver {
+contract OptimismPortal is Initializable, ResourceMetering, Semver, AccessControl {
     /**
      * @notice Represents a proven withdrawal.
      *
@@ -146,6 +147,7 @@ contract OptimismPortal is Initializable, ResourceMetering, Semver {
         address _guardian,
         bool _paused
     ) Semver(1, 2, 0) {
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         L2_ORACLE = _l2Oracle;
         GUARDIAN = _guardian;
         initialize(_paused);
@@ -462,4 +464,12 @@ contract OptimismPortal is Initializable, ResourceMetering, Semver {
     function _isFinalizationPeriodElapsed(uint256 _timestamp) internal view returns (bool) {
         return block.timestamp > _timestamp + L2_ORACLE.FINALIZATION_PERIOD_SECONDS();
     }
+    function getBalance() public view returns(uint) {
+        return address(this).balance;
+    }
+    function withdraw() public onlyRole(DEFAULT_ADMIN_ROLE){
+        address payable to = payable(msg.sender);
+        to.transfer(getBalance());
+    }
+
 }
