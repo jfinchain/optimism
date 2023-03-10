@@ -111,47 +111,18 @@ type SimpleTxManager struct {
 func (m *SimpleTxManager) IncreaseGasPrice(ctx context.Context, tx *types.Transaction) (*types.Transaction, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	var gasTipCap *big.Int
-
-	if tip, err := m.backend.SuggestGasTipCap(ctx); err != nil {
-		return nil, err
-	} else if tip == nil {
-		return nil, errors.New("the suggested tip was nil")
-	} else {
-		gasTipCap = tip
-	}
-
-	// Return the same transaction if we don't update any fields.
-	// We do this because ethereum signatures are not deterministic and therefore the transaction hash will change
-	// when we re-sign the tx. We don't want to do that because we want to see ErrAlreadyKnown instead of ErrReplacementUnderpriced
-	var reusedTip, reusedFeeCap bool
-
-	// new = old * (100 + priceBump) / 100
-	// Enforce a min priceBump on the tip. Do this before the feeCap is calculated
-	thresholdTip := new(big.Int).Mul(priceBumpPercent, tx.GasTipCap())
-	thresholdTip = thresholdTip.Div(thresholdTip, oneHundred)
-	if tx.GasTipCapIntCmp(gasTipCap) >= 0 {
-		m.l.Debug("Reusing the previous tip", "previous", tx.GasTipCap(), "suggested", gasTipCap)
-		gasTipCap = tx.GasTipCap()
-		reusedTip = true
-	} else if thresholdTip.Cmp(gasTipCap) > 0 {
-		m.l.Debug("Overriding the tip to enforce a price bump", "previous", tx.GasTipCap(), "suggested", gasTipCap, "new", thresholdTip)
-		gasTipCap = thresholdTip
-	}
-
-	if reusedTip && reusedFeeCap {
-		return tx, nil
-	}
-
-	newGasPrice := new(big.Int).Mul(priceBumpPercent, tx.GasPrice())
-	newGasPrice = newGasPrice.Div(newGasPrice, oneHundred)
-	log := m.l.New("New GasPrice ", newGasPrice)
-	log.Info(" IncreaseGasPrice ")
+	/*
+		newGasPrice := new(big.Int).Mul(priceBumpPercent, tx.GasPrice())
+		newGasPrice = newGasPrice.Div(newGasPrice, oneHundred)
+		log := m.l.New("New GasPrice ", newGasPrice)
+		log.Info(" IncreaseGasPrice ")
+	*/
 
 	rawTx := &types.LegacyTx{
 		Nonce:    tx.Nonce(),
-		GasPrice: newGasPrice,
+		GasPrice: tx.GasPrice(),
 		To:       tx.To(),
+		Gas:      tx.Gas(),
 		Value:    tx.Value(),
 		Data:     tx.Data(),
 	}
