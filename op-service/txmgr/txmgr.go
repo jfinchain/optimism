@@ -117,7 +117,7 @@ func (m *SimpleTxManager) IncreaseGasPrice(ctx context.Context, tx *types.Transa
 
 	rawTx := &types.LegacyTx{
 		Nonce:    tx.Nonce(),
-		GasPrice: newGasPrice,
+		GasPrice: tx.GasPrice(),
 		To:       tx.To(),
 		Value:    tx.Value(),
 		Data:     tx.Data(),
