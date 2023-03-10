@@ -111,7 +111,7 @@ type SimpleTxManager struct {
 func (m *SimpleTxManager) IncreaseGasPrice(ctx context.Context, tx *types.Transaction) (*types.Transaction, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	var gasTipCap, gasFeeCap *big.Int
+	var gasTipCap *big.Int
 
 	if tip, err := m.backend.SuggestGasTipCap(ctx); err != nil {
 		return nil, err
