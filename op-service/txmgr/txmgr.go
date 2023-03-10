@@ -113,6 +113,7 @@ func (m *SimpleTxManager) IncreaseGasPrice(ctx context.Context, tx *types.Transa
 	defer cancel()
 
 	newGasPrice := new(big.Int).Mul(priceBumpPercent, tx.GasPrice())
+	newGasPrice = newGasPrice.Div(newGasPrice, oneHundred)
 
 	rawTx := &types.LegacyTx{
 		Nonce:    tx.Nonce(),
