@@ -111,20 +111,71 @@ type SimpleTxManager struct {
 func (m *SimpleTxManager) IncreaseGasPrice(ctx context.Context, tx *types.Transaction) (*types.Transaction, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	/*
-		newGasPrice := new(big.Int).Mul(priceBumpPercent, tx.GasPrice())
-		newGasPrice = newGasPrice.Div(newGasPrice, oneHundred)
-		log := m.l.New("New GasPrice ", newGasPrice)
-		log.Info(" IncreaseGasPrice ")
-	*/
 
-	rawTx := &types.LegacyTx{
-		Nonce:    tx.Nonce(),
-		GasPrice: tx.GasPrice(),
-		To:       tx.To(),
-		//		Gas:      tx.Gas(),
-		Value: tx.Value(),
-		Data:  tx.Data(),
+	var gasTipCap, gasFeeCap *big.Int
+
+	if tip, err := m.backend.SuggestGasTipCap(ctx); err != nil {
+		return nil, err
+	} else if tip == nil {
+		return nil, errors.New("the suggested tip was nil")
+	} else {
+		gasTipCap = tip
+	}
+
+	// Return the same transaction if we don't update any fields.
+	// We do this because ethereum signatures are not deterministic and therefore the transaction hash will change
+	// when we re-sign the tx. We don't want to do that because we want to see ErrAlreadyKnown instead of ErrReplacementUnderpriced
+	var reusedTip, reusedFeeCap bool
+
+	// new = old * (100 + priceBump) / 100
+	// Enforce a min priceBump on the tip. Do this before the feeCap is calculated
+	thresholdTip := new(big.Int).Mul(priceBumpPercent, tx.GasTipCap())
+	thresholdTip = thresholdTip.Div(thresholdTip, oneHundred)
+	if tx.GasTipCapIntCmp(gasTipCap) >= 0 {
+		m.l.Debug("Reusing the previous tip", "previous", tx.GasTipCap(), "suggested", gasTipCap)
+		gasTipCap = tx.GasTipCap()
+		reusedTip = true
+	} else if thresholdTip.Cmp(gasTipCap) > 0 {
+		m.l.Debug("Overriding the tip to enforce a price bump", "previous", tx.GasTipCap(), "suggested", gasTipCap, "new", thresholdTip)
+		gasTipCap = thresholdTip
+	}
+
+	if head, err := m.backend.HeaderByNumber(ctx, nil); err != nil {
+		return nil, err
+	} else if head.BaseFee == nil {
+		return nil, errors.New("txmgr does not support pre-london blocks that do not have a basefee")
+	} else {
+		// CalcGasFeeCap ensure that the fee cap is large enough for the tip.
+		gasFeeCap = CalcGasFeeCap(head.BaseFee, gasTipCap)
+	}
+
+	// new = old * (100 + priceBump) / 100
+	// Enforce a min priceBump on the feeCap
+	thresholdFeeCap := new(big.Int).Mul(priceBumpPercent, tx.GasFeeCap())
+	thresholdFeeCap = thresholdFeeCap.Div(thresholdFeeCap, oneHundred)
+	if tx.GasFeeCapIntCmp(gasFeeCap) >= 0 {
+		m.l.Debug("Reusing the previous fee cap", "previous", tx.GasFeeCap(), "suggested", gasFeeCap)
+		gasFeeCap = tx.GasFeeCap()
+		reusedFeeCap = true
+	} else if thresholdFeeCap.Cmp(gasFeeCap) > 0 {
+		m.l.Debug("Overriding the fee cap to enforce a price bump", "previous", tx.GasFeeCap(), "suggested", gasFeeCap, "new", thresholdFeeCap)
+		gasFeeCap = thresholdFeeCap
+	}
+
+	if reusedTip && reusedFeeCap {
+		return tx, nil
+	}
+
+	rawTx := &types.DynamicFeeTx{
+		ChainID:    tx.ChainId(),
+		Nonce:      tx.Nonce(),
+		GasTipCap:  gasTipCap,
+		GasFeeCap:  gasFeeCap,
+		Gas:        tx.Gas(),
+		To:         tx.To(),
+		Value:      tx.Value(),
+		Data:       tx.Data(),
+		AccessList: tx.AccessList(),
 	}
 	return m.Signer(ctx, m.From, types.NewTx(rawTx))
 }

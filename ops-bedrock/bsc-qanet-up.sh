@@ -65,7 +65,7 @@ if [ ! -f "$DEVNET/done" ]; then
   (
     cd "$OP_NODE"
     go run cmd/main.go genesis l2 \
-        --l1-rpc http://tf-dex-qa-ec2-bsc-test-alb-1168080131.ap-northeast-1.elb.amazonaws.com:8545 \
+        --l1-rpc https://bsc-qa.bk.nodereal.cc/ \
         --deploy-config ../packages/contracts-bedrock/deploy-config/bsc-qanet.json \
         --deployment-dir ../packages/contracts-bedrock/deployments/bsc-qanet \
         --outfile.l2 $DEVNET/genesis-l2.json \
