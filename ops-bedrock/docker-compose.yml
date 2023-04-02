@@ -46,6 +46,7 @@ services:
     build:
       context: ../
       dockerfile: ./op-node/Dockerfile
+    image: j2io/jfc-op-node:v2.2.2-dev
     command: >
       op-node
       --l1=ws://l1:8546
