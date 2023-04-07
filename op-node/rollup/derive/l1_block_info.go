@@ -120,7 +120,7 @@ func L1InfoDepositTxData(data []byte) (L1BlockInfo, error) {
 	return info, err
 }
 
-var BSCFakeBaseFee = big.NewInt(5000000000)
+var BSCFakeBaseFee = big.NewInt(000000000)
 
 // L1InfoDeposit creates a L1 Info deposit transaction based on the L1 block,
 // and the L2 block-height difference with the start of the epoch.
